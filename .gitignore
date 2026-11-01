@@ -1,0 +1,7 @@
+*.json
+*.pyc
+*.md
+docs/
+demo/
+.DS_Store
+__pycache__/
