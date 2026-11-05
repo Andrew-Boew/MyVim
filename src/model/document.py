@@ -96,4 +96,38 @@ class TextDocument:
         self._filename = target_path
         self._is_modified = False
 
+    def move_cursor_left(self) -> None:
+        if self._cursor_col > 0:
+            self._cursor_col -= 1
+            self._desired_col = self._cursor_col
+
+    def move_cursor_right(self, allow_past_end: bool = False) -> None:
+        line_len = len(self._lines[self._cursor_row])
+        max_col = line_len if allow_past_end else max(0, line_len - 1)
+        if self._cursor_col < max_col:
+            self._cursor_col += 1
+            self._desired_col = self._cursor_col
+
+    def move_cursor_up(self) -> None:
+        if self._cursor_row > 0:
+            self._cursor_row -= 1
+            line_len = len(self._lines[self._cursor_row])
+            self._cursor_col = min(self._desired_col, max(0, line_len - 1))
+
+    def move_cursor_down(self) -> None:
+        if self._cursor_row < len(self._lines) - 1:
+            self._cursor_row += 1
+            line_len = len(self._lines[self._cursor_row])
+            self._cursor_col = min(self._desired_col, max(0, line_len - 1))
+
+    def page_up(self, page_size: int = 20) -> None:
+        self._cursor_row = max(0, self._cursor_row - page_size)
+        line_len = len(self._lines[self._cursor_row])
+        self._cursor_col = min(self._desired_col, max(0, line_len - 1))
+
+    def page_down(self, page_size: int = 20) -> None:
+        self._cursor_row = min(max(0, len(self._lines) - 1), self._cursor_row + page_size)
+        line_len = len(self._lines[self._cursor_row])
+        self._cursor_col = min(self._desired_col, max(0, line_len - 1))
+
 
