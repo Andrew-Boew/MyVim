@@ -187,6 +187,33 @@ class TextDocument:
         line_len = len(self._lines[self._cursor_row])
         self._cursor_col = min(self._desired_col, max(0, line_len - 1))
 
+    def delete_char(self) -> None:
+        line = self._lines[self._cursor_row]
+        if len(line) == 0 or self._cursor_col >= len(line):
+            return
+        self.record_snapshot()
+        self._clipboard = line.at(self._cursor_col)
+        self._clipboard_is_line = False
+        line.erase(self._cursor_col, 1)
+        if self._cursor_col >= len(line) and self._cursor_col > 0:
+            self._cursor_col = len(line) - 1
+        self._desired_col = self._cursor_col
+        self._is_modified = True
+
+    def replace_char(self, char: str) -> None:
+        line = self._lines[self._cursor_row]
+        if len(line) > 0 and 0 <= self._cursor_col < len(line) and len(char) == 1:
+            self.record_snapshot()
+            line.replace_char(self._cursor_col, char)
+            self._is_modified = True
+
+    def clear_current_line(self) -> None:
+        self.record_snapshot()
+        self._lines[self._cursor_row] = TextLine("")
+        self._cursor_col = 0
+        self._desired_col = 0
+        self._is_modified = True
+
     def open_line_below(self) -> None:
         self.record_snapshot()
         insert_idx = self._cursor_row + 1
@@ -226,5 +253,25 @@ class TextDocument:
         self._cursor_col = 0
         self._desired_col = 0
         self._is_modified = True
+
+    def backspace(self) -> None:
+        if self._cursor_col > 0:
+            self.record_snapshot()
+            line = self._lines[self._cursor_row]
+            line.erase(self._cursor_col - 1, 1)
+            self._cursor_col -= 1
+            self._desired_col = self._cursor_col
+            self._is_modified = True
+        elif self._cursor_row > 0:
+            self.record_snapshot()
+            prev_line = self._lines[self._cursor_row - 1]
+            prev_len = len(prev_line)
+            curr_line = self._lines[self._cursor_row]
+            prev_line.insert(prev_len, curr_line.c_str())
+            del self._lines[self._cursor_row]
+            self._cursor_row -= 1
+            self._cursor_col = prev_len
+            self._desired_col = prev_len
+            self._is_modified = True
 
 
