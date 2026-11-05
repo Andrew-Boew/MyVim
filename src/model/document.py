@@ -120,6 +120,63 @@ class TextDocument:
             line_len = len(self._lines[self._cursor_row])
             self._cursor_col = min(self._desired_col, max(0, line_len - 1))
 
+    def move_cursor_line_start(self) -> None:
+        self._cursor_col = 0
+        self._desired_col = 0
+
+    def move_cursor_line_end(self) -> None:
+        line_len = len(self._lines[self._cursor_row])
+        self._cursor_col = max(0, line_len - 1)
+        self._desired_col = self._cursor_col
+
+    def move_cursor_word_forward(self) -> None:
+        line = self._lines[self._cursor_row]
+        line_len = len(line)
+        if self._cursor_col < line_len - 1:
+            target = line.find_word_end(self._cursor_col)
+            if target > self._cursor_col:
+                self._cursor_col = target
+                self._desired_col = target
+                return
+        if self._cursor_row < len(self._lines) - 1:
+            self._cursor_row += 1
+            next_line = self._lines[self._cursor_row]
+            target = next_line.find_word_end(0)
+            self._cursor_col = target
+            self._desired_col = target
+
+    def move_cursor_word_backward(self) -> None:
+        if self._cursor_col > 0:
+            line = self._lines[self._cursor_row]
+            target = line.find_word_start(self._cursor_col)
+            if target < self._cursor_col:
+                self._cursor_col = target
+                self._desired_col = target
+                return
+        if self._cursor_row > 0:
+            self._cursor_row -= 1
+            prev_line = self._lines[self._cursor_row]
+            prev_len = len(prev_line)
+            target = prev_line.find_word_start(max(0, prev_len - 1))
+            self._cursor_col = target
+            self._desired_col = target
+
+    def move_cursor_file_start(self) -> None:
+        self._cursor_row = 0
+        self._cursor_col = 0
+        self._desired_col = 0
+
+    def move_cursor_file_end(self) -> None:
+        self._cursor_row = max(0, len(self._lines) - 1)
+        line_len = len(self._lines[self._cursor_row])
+        self._cursor_col = min(self._desired_col, max(0, line_len - 1))
+
+    def move_cursor_to_line(self, line_number: int) -> None:
+        target_row = max(0, min(line_number - 1, len(self._lines) - 1))
+        self._cursor_row = target_row
+        line_len = len(self._lines[self._cursor_row])
+        self._cursor_col = min(self._desired_col, max(0, line_len - 1))
+
     def page_up(self, page_size: int = 20) -> None:
         self._cursor_row = max(0, self._cursor_row - page_size)
         line_len = len(self._lines[self._cursor_row])
