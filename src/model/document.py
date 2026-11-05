@@ -187,4 +187,44 @@ class TextDocument:
         line_len = len(self._lines[self._cursor_row])
         self._cursor_col = min(self._desired_col, max(0, line_len - 1))
 
+    def open_line_below(self) -> None:
+        self.record_snapshot()
+        insert_idx = self._cursor_row + 1
+        self._lines.insert(insert_idx, TextLine(""))
+        self._cursor_row = insert_idx
+        self._cursor_col = 0
+        self._desired_col = 0
+        self._is_modified = True
+
+    def open_line_above(self) -> None:
+        self.record_snapshot()
+        self._lines.insert(self._cursor_row, TextLine(""))
+        self._cursor_col = 0
+        self._desired_col = 0
+        self._is_modified = True
+
+    def insert_text(self, text: str) -> None:
+        self.record_snapshot()
+        line = self._lines[self._cursor_row]
+        insert_pos = min(self._cursor_col, len(line))
+        line.insert(insert_pos, text)
+        self._cursor_col = insert_pos + len(text)
+        self._desired_col = self._cursor_col
+        self._is_modified = True
+
+    def split_line(self) -> None:
+        self.record_snapshot()
+        cur_line = self._lines[self._cursor_row]
+        cur_text = cur_line.c_str()
+        split_idx = min(self._cursor_col, len(cur_line))
+        left_part = cur_text[:split_idx]
+        right_part = cur_text[split_idx:]
+        self._lines[self._cursor_row] = TextLine(left_part)
+        new_line = TextLine(right_part)
+        self._lines.insert(self._cursor_row + 1, new_line)
+        self._cursor_row += 1
+        self._cursor_col = 0
+        self._desired_col = 0
+        self._is_modified = True
+
 
