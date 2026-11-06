@@ -385,4 +385,68 @@ class TextDocument:
             self._desired_col = prev_len
             self._is_modified = True
 
+    def search(self, query: str, forward: bool = True) -> bool:
+        if not query:
+            return False
+        self._last_search_query = query
+        self._last_search_forward = forward
 
+        if forward:
+            cur_line = self._lines[self._cursor_row].c_str()
+            idx = cur_line.find(query, self._cursor_col + 1)
+            if idx != -1:
+                self._cursor_col = idx
+                self._desired_col = idx
+                return True
+            for r in range(self._cursor_row + 1, len(self._lines)):
+                idx = self._lines[r].c_str().find(query)
+                if idx != -1:
+                    self._cursor_row = r
+                    self._cursor_col = idx
+                    self._desired_col = idx
+                    return True
+            for r in range(0, self._cursor_row):
+                idx = self._lines[r].c_str().find(query)
+                if idx != -1:
+                    self._cursor_row = r
+                    self._cursor_col = idx
+                    self._desired_col = idx
+                    return True
+            idx = self._lines[self._cursor_row].c_str()[: self._cursor_col + 1].find(query)
+            if idx != -1:
+                self._cursor_col = idx
+                self._desired_col = idx
+                return True
+        else:
+            cur_line = self._lines[self._cursor_row].c_str()
+            idx = cur_line[: self._cursor_col].rfind(query)
+            if idx != -1:
+                self._cursor_col = idx
+                self._desired_col = idx
+                return True
+            for r in range(self._cursor_row - 1, -1, -1):
+                idx = self._lines[r].c_str().rfind(query)
+                if idx != -1:
+                    self._cursor_row = r
+                    self._cursor_col = idx
+                    self._desired_col = idx
+                    return True
+            for r in range(len(self._lines) - 1, self._cursor_row, -1):
+                idx = self._lines[r].c_str().rfind(query)
+                if idx != -1:
+                    self._cursor_row = r
+                    self._cursor_col = idx
+                    self._desired_col = idx
+                    return True
+            idx = self._lines[self._cursor_row].c_str().rfind(query)
+            if idx != -1 and idx > self._cursor_col:
+                self._cursor_col = idx
+                self._desired_col = idx
+                return True
+        return False
+
+    def repeat_search(self, reverse: bool = False) -> bool:
+        if not self._last_search_query:
+            return False
+        forward = self._last_search_forward if not reverse else not self._last_search_forward
+        return self.search(self._last_search_query, forward=forward)
