@@ -200,6 +200,64 @@ class TextDocument:
         self._desired_col = self._cursor_col
         self._is_modified = True
 
+    def delete_word(self) -> None:
+        line = self._lines[self._cursor_row]
+        start, end = line.get_word_range_at(self._cursor_col)
+        if end <= start:
+            return
+        self.record_snapshot()
+        self._clipboard = line.c_str()[start:end]
+        self._clipboard_is_line = False
+        line.erase(start, end - start)
+        self._cursor_col = min(start, max(0, len(line) - 1))
+        self._desired_col = self._cursor_col
+        self._is_modified = True
+
+    def cut_line(self) -> None:
+        self.record_snapshot()
+        line_text = self._lines[self._cursor_row].c_str()
+        self._clipboard = line_text
+        self._clipboard_is_line = True
+        if len(self._lines) > 1:
+            del self._lines[self._cursor_row]
+            if self._cursor_row >= len(self._lines):
+                self._cursor_row = len(self._lines) - 1
+        else:
+            self._lines[0] = TextLine("")
+        self._cursor_col = min(self._desired_col, max(0, len(self._lines[self._cursor_row]) - 1))
+        self._desired_col = self._cursor_col
+        self._is_modified = True
+
+    def copy_line(self) -> None:
+        self._clipboard = self._lines[self._cursor_row].c_str()
+        self._clipboard_is_line = True
+
+    def copy_word(self) -> None:
+        line = self._lines[self._cursor_row]
+        start, end = line.get_word_range_at(self._cursor_col)
+        if end > start:
+            self._clipboard = line.c_str()[start:end]
+            self._clipboard_is_line = False
+
+    def paste(self) -> None:
+        if not self._clipboard and not self._clipboard_is_line:
+            return
+        self.record_snapshot()
+        if self._clipboard_is_line:
+            new_line = TextLine(self._clipboard)
+            insert_idx = self._cursor_row + 1
+            self._lines.insert(insert_idx, new_line)
+            self._cursor_row = insert_idx
+            self._cursor_col = 0
+            self._desired_col = 0
+        else:
+            line = self._lines[self._cursor_row]
+            insert_pos = min(self._cursor_col + 1, len(line))
+            line.insert(insert_pos, self._clipboard)
+            self._cursor_col = insert_pos + len(self._clipboard) - 1
+            self._desired_col = self._cursor_col
+        self._is_modified = True
+
     def replace_char(self, char: str) -> None:
         line = self._lines[self._cursor_row]
         if len(line) > 0 and 0 <= self._cursor_col < len(line) and len(char) == 1:
