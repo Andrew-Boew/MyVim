@@ -96,6 +96,59 @@ class TextDocument:
         self._filename = target_path
         self._is_modified = False
 
+    def record_snapshot(self) -> None:
+        snapshot = {
+            "lines": [line.c_str() for line in self._lines],
+            "row": self._cursor_row,
+            "col": self._cursor_col,
+            "modified": self._is_modified,
+        }
+        self._undo_stack.append(snapshot)
+        if len(self._undo_stack) > 100:
+            self._undo_stack.pop(0)
+
+    def undo(self) -> bool:
+        if not self._undo_stack:
+            return False
+        state = self._undo_stack.pop()
+        self._lines = [TextLine(s) for s in state["lines"]]
+        self._cursor_row = min(state["row"], len(self._lines) - 1)
+        self._cursor_col = min(state["col"], len(self._lines[self._cursor_row]))
+        self._desired_col = self._cursor_col
+        self._is_modified = state["modified"]
+        return True
+
+    def undo_line(self) -> bool:
+        if not self._undo_stack:
+            return False
+        cur_row = self._cursor_row
+        oldest_diff = None
+        for snap in self._undo_stack:
+            if len(snap["lines"]) > cur_row:
+                cand = snap["lines"][cur_row]
+                if cand != self._lines[cur_row].c_str():
+                    oldest_diff = cand
+                    break
+        if oldest_diff is not None:
+            self.record_snapshot()
+            self._lines[cur_row] = TextLine(oldest_diff)
+            self._cursor_col = min(self._cursor_col, len(self._lines[cur_row]))
+            self._desired_col = self._cursor_col
+            self._is_modified = True
+            return True
+        return False
+
+    def revert(self) -> None:
+        if self._filename:
+            self.load(self._filename)
+        else:
+            self._lines = [TextLine("")]
+            self._cursor_row = 0
+            self._cursor_col = 0
+            self._desired_col = 0
+            self._is_modified = False
+        self._undo_stack.clear()
+
     def move_cursor_left(self) -> None:
         if self._cursor_col > 0:
             self._cursor_col -= 1
