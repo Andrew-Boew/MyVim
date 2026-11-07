@@ -246,8 +246,65 @@ class EditorController:
             self._pending_keys = ""
             return True
 
+        if key == ord("w"):
+            if self._pending_keys == "y":
+                self._doc.copy_word()
+                self._pending_keys = ""
+                self._status_message = "Word yanked"
+            elif self._pending_keys == "di":
+                self._doc.delete_word()
+                self._pending_keys = ""
+            else:
+                self._doc.move_cursor_word_forward()
+                self._pending_keys = ""
+            return True
 
+        if key == ord("b"):
+            self._doc.move_cursor_word_backward()
+            self._pending_keys = ""
+            return True
+
+        if key == ord("d"):
+            if self._pending_keys == "d":
+                self._doc.cut_line()
+                self._pending_keys = ""
+            else:
+                self._pending_keys = "d"
+            return True
+
+        if key == ord("y"):
+            if self._pending_keys == "y":
+                self._doc.copy_line()
+                self._pending_keys = ""
+                self._status_message = "Line yanked"
+            else:
+                self._pending_keys = "y"
+            return True
+
+
+        if key == ord("g"):
+            if self._pending_keys == "g":
+                self._doc.move_cursor_file_start()
+                self._pending_keys = ""
+            else:
+                self._pending_keys = "g"
+            return True
+
+        if ord("1") <= key <= ord("9") or (self._pending_keys.isdigit() and ord("0") <= key <= ord("9")):
+            self._pending_keys += chr(key)
+            return True
+
+        if key == ord("G"):
+            if self._pending_keys.isdigit():
+                self._doc.move_cursor_to_line(int(self._pending_keys))
+            else:
+                self._doc.move_cursor_file_end()
+            self._pending_keys = ""
+            return True
+
+        self._pending_keys = ""
         return True
+
 
     def _handle_insert_mode_key(self, key: int) -> bool:
         if key in (KeyCode.ESC, 27):
