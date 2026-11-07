@@ -75,33 +75,177 @@ class EditorController:
         return True
 
     def _handle_normal_mode_key(self, key: int) -> bool:
+        if self._replace_mode:
+            self._replace_mode = False
+            if 32 <= key <= 126 or (key > 127 and key < 65536):
+                self._doc.replace_char(chr(key))
+            return True
+
+        if key in (KeyCode.ESC, 27):
+            if self._pending_keys == "ESC":
+                self.stop()
+                return False
+            self._pending_keys = "ESC"
+            self._status_message = "Press ESC again to exit, or type :q"
+            return True
+
+        if self._pending_keys == "ESC":
+            self._pending_keys = ""
+            self._status_message = ""
+
+        if key in (ord("q"), 1081) and not self._pending_keys:
+            if not self._doc.is_modified():
+                self.stop()
+                return False
+            self._status_message = "No write since last change (use :q! to override)"
+            return True
+
         if key == ord(":"):
             self._mode = EditorMode.COMMAND
             self._command_buffer = ":"
             self._status_message = ""
+            self._pending_keys = ""
             return True
 
         if key == ord("/"):
             self._mode = EditorMode.SEARCH
             self._command_buffer = "/"
             self._status_message = ""
+            self._pending_keys = ""
             return True
 
         if key == ord("?"):
             self._mode = EditorMode.SEARCH
             self._command_buffer = "?"
             self._status_message = ""
+            self._pending_keys = ""
             return True
 
-        if key in (ord("i"), ord("I"), ord("A"), ord("o"), ord("S")):
+        if key == ord("i"):
+            if self._pending_keys == "d":
+                self._pending_keys = "di"
+                return True
             self._mode = EditorMode.INSERT
             self._status_message = ""
+            self._pending_keys = ""
             return True
 
-        if key in (KeyCode.ESC, 27):
-            self._pending_keys = ""
+        if key == ord("I"):
+            self._doc.move_cursor_line_start()
+            self._mode = EditorMode.INSERT
             self._status_message = ""
+            self._pending_keys = ""
             return True
+
+        if key == ord("A"):
+            self._doc.move_cursor_line_end()
+            self._doc.move_cursor_right(allow_past_end=True)
+            self._mode = EditorMode.INSERT
+            self._status_message = ""
+            self._pending_keys = ""
+            return True
+
+        if key == ord("o"):
+            self._doc.open_line_below()
+            self._mode = EditorMode.INSERT
+            self._status_message = ""
+            self._pending_keys = ""
+            return True
+
+        if key == ord("O"):
+            self._doc.open_line_above()
+            self._mode = EditorMode.INSERT
+            self._status_message = ""
+            self._pending_keys = ""
+            return True
+
+        if key == ord("S"):
+            self._doc.clear_current_line()
+            self._mode = EditorMode.INSERT
+            self._status_message = ""
+            self._pending_keys = ""
+            return True
+
+        if key == ord("r"):
+            self._replace_mode = True
+            return True
+
+        if key == ord("x") or key == KeyCode.DELETE:
+            self._doc.delete_char()
+            self._pending_keys = ""
+            return True
+
+        if key == ord("p"):
+            self._doc.paste()
+            self._pending_keys = ""
+            return True
+
+        if key == ord("u"):
+            if not self._doc.undo():
+                self._status_message = "Already at oldest change"
+            else:
+                self._status_message = "Change undone"
+            self._pending_keys = ""
+            return True
+
+        if key == ord("U"):
+            if not self._doc.undo_line():
+                self._status_message = "Line not modified"
+            else:
+                self._status_message = "Line restored"
+            self._pending_keys = ""
+            return True
+
+        if key == ord("n"):
+            if not self._doc.repeat_search(reverse=False):
+                self._status_message = "Pattern not found"
+            return True
+
+        if key == ord("N"):
+            if not self._doc.repeat_search(reverse=True):
+                self._status_message = "Pattern not found"
+            return True
+
+        if key in (KeyCode.LEFT, ord("h")):
+            self._doc.move_cursor_left()
+            self._pending_keys = ""
+            return True
+
+        if key in (KeyCode.RIGHT, ord("l")):
+            self._doc.move_cursor_right()
+            self._pending_keys = ""
+            return True
+
+        if key in (KeyCode.UP, ord("k")):
+            self._doc.move_cursor_up()
+            self._pending_keys = ""
+            return True
+
+        if key in (KeyCode.DOWN, ord("j")):
+            self._doc.move_cursor_down()
+            self._pending_keys = ""
+            return True
+
+        if key in (ord("0"), ord("^"), KeyCode.HOME):
+            self._doc.move_cursor_line_start()
+            self._pending_keys = ""
+            return True
+
+        if key in (ord("$"), KeyCode.END):
+            self._doc.move_cursor_line_end()
+            self._pending_keys = ""
+            return True
+
+        if key == KeyCode.PAGE_UP:
+            self._doc.page_up()
+            self._pending_keys = ""
+            return True
+
+        if key == KeyCode.PAGE_DOWN:
+            self._doc.page_down()
+            self._pending_keys = ""
+            return True
+
 
         return True
 
