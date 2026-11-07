@@ -349,14 +349,95 @@ class EditorController:
         if key in (KeyCode.ESC, 27):
             self._mode = EditorMode.NORMAL
             self._command_buffer = ""
+            self._status_message = ""
             return True
 
-        if key in (KeyCode.ENTER, KeyCode.RETURN):
+        if key in (KeyCode.KEY_BACKSPACE, KeyCode.BACKSPACE, 8, 127):
+            if len(self._command_buffer) > 1:
+                self._command_buffer = self._command_buffer[:-1]
+            else:
+                self._mode = EditorMode.NORMAL
+                self._command_buffer = ""
+            return True
+
+        if key in (KeyCode.ENTER, KeyCode.RETURN, 10, 13, 343):
+            cmd = self._command_buffer[1:].strip()
             self._mode = EditorMode.NORMAL
             self._command_buffer = ""
-            return True
+            return self._execute_command(cmd)
+
+        if 32 <= key <= 126 or (key > 127 and key < 65536):
+            self._command_buffer += chr(key)
 
         return True
+
+    def _execute_command(self, cmd: str) -> bool:
+        if not cmd:
+            return True
+
+        if cmd in ("q!", "quit!", "й!", "й! "):
+            self.stop()
+            return False
+
+        if cmd in ("q", "quit", "й"):
+            if self._doc.is_modified():
+                self._status_message = "No write since last change (add ! to override)"
+                return True
+            self.stop()
+            return False
+
+        if cmd in ("wq!", "wq", "x", "цй!", "цй", "ч"):
+            try:
+                self._doc.save()
+                self.stop()
+                return False
+            except Exception as e:
+                self._status_message = str(e)
+                return True
+
+        if cmd.startswith("w ") or cmd.startswith("ц "):
+            target = cmd[2:].strip()
+            try:
+                self._doc.save(target)
+                self._status_message = f'"{target}" written'
+            except Exception as e:
+                self._status_message = str(e)
+            return True
+
+        if cmd in ("w", "ц"):
+            try:
+                self._doc.save()
+                fname = self._doc.get_filename() or "[No Name]"
+                self._status_message = f'"{fname}" written'
+            except Exception as e:
+                self._status_message = str(e)
+            return True
+
+        if cmd.startswith("o ") or cmd.startswith("щ "):
+            target = cmd[2:].strip()
+            try:
+                self._doc.load(target)
+                self._status_message = f'"{target}" loaded'
+            except Exception as e:
+                self._status_message = str(e)
+            return True
+
+        if cmd == "e!":
+            self._doc.revert()
+            self._status_message = "Changes reverted"
+            return True
+
+        if cmd.isdigit():
+            self._doc.move_cursor_to_line(int(cmd))
+            return True
+
+        if cmd == "h":
+            self._status_message = ":w save | :q exit | :q! force | :o open | / search | i insert"
+            return True
+
+        self._status_message = f"Not an editor command: {cmd}"
+        return True
+
 
     def _handle_search_mode_key(self, key: int) -> bool:
         if key in (KeyCode.ESC, 27):
