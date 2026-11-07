@@ -108,8 +108,41 @@ class EditorController:
     def _handle_insert_mode_key(self, key: int) -> bool:
         if key in (KeyCode.ESC, 27):
             self._mode = EditorMode.NORMAL
+            self._doc.move_cursor_left()
+            self._status_message = ""
             return True
+
+        if key in (KeyCode.ENTER, KeyCode.RETURN, 10, 13, 343):
+            self._doc.split_line()
+            return True
+
+        if key in (KeyCode.KEY_BACKSPACE, KeyCode.BACKSPACE, 8, 127):
+            self._doc.backspace()
+            return True
+
+        if key == KeyCode.LEFT:
+            self._doc.move_cursor_left()
+            return True
+
+        if key == KeyCode.RIGHT:
+            self._doc.move_cursor_right(allow_past_end=True)
+            return True
+
+        if key == KeyCode.UP:
+            self._doc.move_cursor_up()
+            return True
+
+        if key == KeyCode.DOWN:
+            self._doc.move_cursor_down()
+            return True
+
+        if 32 <= key <= 126 or (key > 127 and key < 65536):
+            self._doc.insert_text(chr(key))
+            return True
+
         return True
+
+
 
     def _handle_command_mode_key(self, key: int) -> bool:
         if key in (KeyCode.ESC, 27):
