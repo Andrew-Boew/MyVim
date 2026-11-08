@@ -443,11 +443,31 @@ class EditorController:
         if key in (KeyCode.ESC, 27):
             self._mode = EditorMode.NORMAL
             self._command_buffer = ""
+            self._status_message = ""
             return True
 
-        if key in (KeyCode.ENTER, KeyCode.RETURN):
+        if key in (KeyCode.KEY_BACKSPACE, KeyCode.BACKSPACE, 8, 127):
+            if len(self._command_buffer) > 1:
+                self._command_buffer = self._command_buffer[:-1]
+            else:
+                self._mode = EditorMode.NORMAL
+                self._command_buffer = ""
+            return True
+
+        if key in (KeyCode.ENTER, KeyCode.RETURN, 10, 13, 343):
+            prefix = self._command_buffer[0]
+            query = self._command_buffer[1:]
             self._mode = EditorMode.NORMAL
             self._command_buffer = ""
+            if query:
+                forward = prefix == "/"
+                if not self._doc.search(query, forward=forward):
+                    self._status_message = f"Pattern not found: {query}"
             return True
 
+        if 32 <= key <= 126 or (key > 127 and key < 65536):
+            self._command_buffer += chr(key)
+
         return True
+
+
