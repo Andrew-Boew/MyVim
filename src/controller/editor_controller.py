@@ -46,6 +46,7 @@ class EditorController:
         self._mode = mode
         self._command_buffer = ""
         self._pending_keys = ""
+        self._replace_mode = False
 
     def get_status_message(self) -> str:
         return self._status_message
@@ -62,6 +63,10 @@ class EditorController:
     def handle_key(self, key: int) -> bool:
         if key == -1:
             return True
+
+        if key in (3, 4):
+            self.stop()
+            return False
 
         if self._mode == EditorMode.NORMAL:
             return self._handle_normal_mode_key(key)
@@ -305,7 +310,6 @@ class EditorController:
         self._pending_keys = ""
         return True
 
-
     def _handle_insert_mode_key(self, key: int) -> bool:
         if key in (KeyCode.ESC, 27):
             self._mode = EditorMode.NORMAL
@@ -342,8 +346,6 @@ class EditorController:
             return True
 
         return True
-
-
 
     def _handle_command_mode_key(self, key: int) -> bool:
         if key in (KeyCode.ESC, 27):
@@ -438,7 +440,6 @@ class EditorController:
         self._status_message = f"Not an editor command: {cmd}"
         return True
 
-
     def _handle_search_mode_key(self, key: int) -> bool:
         if key in (KeyCode.ESC, 27):
             self._mode = EditorMode.NORMAL
@@ -470,4 +471,27 @@ class EditorController:
 
         return True
 
+    def run(self) -> None:
+        if not self._adapter or not self._view:
+            return
 
+        self._running = True
+        self._adapter.initialize()
+        try:
+            while self._running:
+                self._view.render(
+                    self._doc,
+                    self._mode.value,
+                    self._status_message,
+                    self._command_buffer,
+                )
+                try:
+                    key = self._adapter.get_key()
+                except KeyboardInterrupt:
+                    break
+                if not self.handle_key(key):
+                    break
+        except KeyboardInterrupt:
+            pass
+        finally:
+            self._adapter.shutdown()
