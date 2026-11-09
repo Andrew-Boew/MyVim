@@ -1,6 +1,7 @@
 *.json
 *.pyc
 *.md
+!README.md
 docs/
 demo/
 .DS_Store
