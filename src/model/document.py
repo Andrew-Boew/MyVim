@@ -1,5 +1,6 @@
 from typing import List, Optional, Tuple
 
+from src.model.command_history import CommandHistory
 from src.model.text_line import TextLine
 
 
@@ -13,7 +14,8 @@ class TextDocument:
         self._is_modified = False
         self._clipboard = ""
         self._clipboard_is_line = False
-        self._undo_stack: List[dict] = []
+        self._history = CommandHistory()
+        self._history.clear()
         self._last_search_query = ""
         self._last_search_forward = True
 
@@ -64,6 +66,13 @@ class TextDocument:
         self._clipboard = text
         self._clipboard_is_line = is_line
 
+    def get_history(self) -> CommandHistory:
+        return self._history
+
+    @property
+    def _undo_stack(self) -> List[dict]:
+        return self._history.get_stack()
+
     def set_text(self, text: str) -> None:
         raw_lines = text.splitlines()
         if not raw_lines:
@@ -74,7 +83,7 @@ class TextDocument:
         self._cursor_col = 0
         self._desired_col = 0
         self._is_modified = False
-        self._undo_stack.clear()
+        self._history.clear()
 
     def get_text(self) -> str:
         return "\n".join(line.c_str() for line in self._lines)
@@ -103,14 +112,14 @@ class TextDocument:
             "col": self._cursor_col,
             "modified": self._is_modified,
         }
-        self._undo_stack.append(snapshot)
-        if len(self._undo_stack) > 100:
-            self._undo_stack.pop(0)
+        self._history.push(snapshot)
 
     def undo(self) -> bool:
-        if not self._undo_stack:
+        if self._history.is_empty():
             return False
-        state = self._undo_stack.pop()
+        state = self._history.pop()
+        if state is None:
+            return False
         self._lines = [TextLine(s) for s in state["lines"]]
         self._cursor_row = min(state["row"], len(self._lines) - 1)
         self._cursor_col = min(state["col"], len(self._lines[self._cursor_row]))
@@ -119,11 +128,11 @@ class TextDocument:
         return True
 
     def undo_line(self) -> bool:
-        if not self._undo_stack:
+        if self._history.is_empty():
             return False
         cur_row = self._cursor_row
         oldest_diff = None
-        for snap in self._undo_stack:
+        for snap in self._history:
             if len(snap["lines"]) > cur_row:
                 cand = snap["lines"][cur_row]
                 if cand != self._lines[cur_row].c_str():
@@ -147,7 +156,7 @@ class TextDocument:
             self._cursor_col = 0
             self._desired_col = 0
             self._is_modified = False
-        self._undo_stack.clear()
+        self._history.clear()
 
     def move_cursor_left(self) -> None:
         if self._cursor_col > 0:
