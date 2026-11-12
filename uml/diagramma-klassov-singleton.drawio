@@ -278,6 +278,62 @@
           <mxGeometry height="16" width="45" x="1750" y="1135" as="geometry" />
         </mxCell>
 
+
+        <!-- Command Pattern Classes -->
+        <mxCell id="c_ICommand" parent="1" style="swimlane;fontStyle=0;align=center;verticalAlign=middle;childLayout=stackLayout;horizontal=1;startSize=36;horizontalStack=0;resizeParent=1;resizeParentMax=0;collapsible=0;marginBottom=0;whiteSpace=wrap;html=1;fontFamily=Arial;fontSize=14;shadow=0;fillColor=#ffffff;strokeColor=#000000;strokeWidth=1;" value="«interface»&lt;br&gt;ICommand" vertex="1">
+          <mxGeometry height="70" width="220" x="890" y="580" as="geometry" />
+        </mxCell>
+        <mxCell id="c_ICommand_o" parent="c_ICommand" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=6;spacingTop=2;whiteSpace=wrap;html=1;fontFamily=Arial;fontSize=12;overflow=hidden;" value="+ execute(): bool" vertex="1">
+          <mxGeometry height="34" width="220" y="36" as="geometry" />
+        </mxCell>
+
+        <mxCell id="c_SetLineNumbersCommand" parent="1" style="swimlane;fontStyle=0;align=center;verticalAlign=middle;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;collapsible=0;marginBottom=0;whiteSpace=wrap;html=1;fontFamily=Arial;fontSize=14;shadow=0;fillColor=#ffffff;strokeColor=#000000;strokeWidth=1;" value="SetLineNumbersCommand" vertex="1">
+          <mxGeometry height="110" width="240" x="600" y="720" as="geometry" />
+        </mxCell>
+        <mxCell id="c_SetLineNumbersCommand_a" parent="c_SetLineNumbersCommand" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=6;spacingTop=2;whiteSpace=wrap;html=1;fontFamily=Arial;fontSize=12;overflow=hidden;" value="- _view: EditorView&lt;br&gt;- _enabled: bool | None" vertex="1">
+          <mxGeometry height="44" width="240" y="26" as="geometry" />
+        </mxCell>
+        <mxCell id="c_SetLineNumbersCommand_o" parent="c_SetLineNumbersCommand" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=6;spacingTop=2;whiteSpace=wrap;html=1;fontFamily=Arial;fontSize=12;overflow=hidden;" value="+ execute(): bool" vertex="1">
+          <mxGeometry height="40" width="240" y="70" as="geometry" />
+        </mxCell>
+
+        <mxCell id="c_SaveCommand" parent="1" style="swimlane;fontStyle=0;align=center;verticalAlign=middle;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;collapsible=0;marginBottom=0;whiteSpace=wrap;html=1;fontFamily=Arial;fontSize=14;shadow=0;fillColor=#ffffff;strokeColor=#000000;strokeWidth=1;" value="SaveCommand" vertex="1">
+          <mxGeometry height="110" width="220" x="870" y="720" as="geometry" />
+        </mxCell>
+        <mxCell id="c_SaveCommand_a" parent="c_SaveCommand" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=6;spacingTop=2;whiteSpace=wrap;html=1;fontFamily=Arial;fontSize=12;overflow=hidden;" value="- _doc: TextDocument&lt;br&gt;- _filename: str | None" vertex="1">
+          <mxGeometry height="44" width="220" y="26" as="geometry" />
+        </mxCell>
+        <mxCell id="c_SaveCommand_o" parent="c_SaveCommand" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=6;spacingTop=2;whiteSpace=wrap;html=1;fontFamily=Arial;fontSize=12;overflow=hidden;" value="+ execute(): bool" vertex="1">
+          <mxGeometry height="40" width="220" y="70" as="geometry" />
+        </mxCell>
+
+        <mxCell id="c_UndoCommand" parent="1" style="swimlane;fontStyle=0;align=center;verticalAlign=middle;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;collapsible=0;marginBottom=0;whiteSpace=wrap;html=1;fontFamily=Arial;fontSize=14;shadow=0;fillColor=#ffffff;strokeColor=#000000;strokeWidth=1;" value="UndoCommand" vertex="1">
+          <mxGeometry height="95" width="200" x="1120" y="720" as="geometry" />
+        </mxCell>
+        <mxCell id="c_UndoCommand_a" parent="c_UndoCommand" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=6;spacingTop=2;whiteSpace=wrap;html=1;fontFamily=Arial;fontSize=12;overflow=hidden;" value="- _doc: TextDocument" vertex="1">
+          <mxGeometry height="30" width="200" y="26" as="geometry" />
+        </mxCell>
+        <mxCell id="c_UndoCommand_o" parent="c_UndoCommand" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=6;spacingTop=2;whiteSpace=wrap;html=1;fontFamily=Arial;fontSize=12;overflow=hidden;" value="+ execute(): bool" vertex="1">
+          <mxGeometry height="39" width="200" y="56" as="geometry" />
+        </mxCell>
+
+        <!-- Command Relationships -->
+        <mxCell id="e_ctrl_cmd" edge="1" parent="1" source="c_EditorController" target="c_ICommand" style="html=1;rounded=0;strokeColor=#000000;strokeWidth=1.2;dashed=1;endArrow=open;endFill=0;exitX=0.5;exitY=1;entryX=0.5;entryY=0;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="lbl_ctrl_cmd" parent="1" style="text;html=1;align=center;verticalAlign=middle;fontFamily=Arial;fontSize=11;strokeColor=none;fillColor=none;" value="«invokes»" vertex="1">
+          <mxGeometry height="16" width="60" x="970" y="530" as="geometry" />
+        </mxCell>
+
+        <mxCell id="e_setnum_cmd" edge="1" parent="1" source="c_SetLineNumbersCommand" target="c_ICommand" style="html=1;rounded=0;strokeColor=#000000;strokeWidth=1.2;dashed=1;endArrow=block;endFill=0;exitX=0.5;exitY=0;entryX=0.25;entryY=1;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_save_cmd" edge="1" parent="1" source="c_SaveCommand" target="c_ICommand" style="html=1;rounded=0;strokeColor=#000000;strokeWidth=1.2;dashed=1;endArrow=block;endFill=0;exitX=0.5;exitY=0;entryX=0.5;entryY=1;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_undo_cmd" edge="1" parent="1" source="c_UndoCommand" target="c_ICommand" style="html=1;rounded=0;strokeColor=#000000;strokeWidth=1.2;dashed=1;endArrow=block;endFill=0;exitX=0.5;exitY=0;entryX=0.75;entryY=1;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
       </root>
     </mxGraphModel>
   </diagram>

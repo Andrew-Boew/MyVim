@@ -72,7 +72,7 @@ class EditorView:
                     visible_slice = line_content[self._scroll_col : self._scroll_col + avail_width]
                 else:
                     visible_slice = ""
-                gutter = f"{file_row + 1:>{gutter_digits}} " if self._show_line_numbers else ""
+                gutter = (str(file_row + 1).rjust(gutter_digits) + " ") if self._show_line_numbers else ""
                 self._adapter.add_str(screen_row, 0, gutter + visible_slice)
             else:
                 gutter = (" " * gutter_width) if self._show_line_numbers else ""
