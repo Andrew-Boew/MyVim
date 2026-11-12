@@ -2,6 +2,12 @@ from enum import Enum
 from typing import Optional
 
 from src.adapter.base import ITuiAdapter, KeyCode
+from src.controller.commands import (
+    SetLineNumbersCommand,
+    SaveCommand,
+    UndoCommand,
+    RevertCommand,
+)
 from src.model.document import TextDocument
 from src.view.editor_view import EditorView
 
@@ -425,8 +431,26 @@ class EditorController:
             return True
 
         if cmd == "e!":
-            self._doc.revert()
+            RevertCommand(self._doc).execute()
             self._status_message = "Changes reverted"
+            return True
+
+        if cmd in ("set num", "set nu"):
+            if self._view is not None:
+                SetLineNumbersCommand(self._view, enabled=True).execute()
+            self._status_message = "Line numbers enabled"
+            return True
+
+        if cmd in ("set nonu", "set nonumber"):
+            if self._view is not None:
+                SetLineNumbersCommand(self._view, enabled=False).execute()
+            self._status_message = "Line numbers disabled"
+            return True
+
+        if cmd in ("set invnu", "set nu!", "set num!"):
+            if self._view is not None:
+                state = SetLineNumbersCommand(self._view).execute()
+                self._status_message = "Line numbers enabled" if state else "Line numbers disabled"
             return True
 
         if cmd.isdigit():

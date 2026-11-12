@@ -9,6 +9,17 @@ class EditorView:
         self._adapter = adapter
         self._scroll_row = 0
         self._scroll_col = 0
+        self._show_line_numbers = False
+
+    def toggle_line_numbers(self) -> bool:
+        self._show_line_numbers = not self._show_line_numbers
+        return self._show_line_numbers
+
+    def set_line_numbers(self, enabled: bool) -> None:
+        self._show_line_numbers = enabled
+
+    def is_line_numbers_enabled(self) -> bool:
+        return self._show_line_numbers
 
     def get_adapter(self) -> ITuiAdapter:
         return self._adapter
@@ -41,25 +52,31 @@ class EditorView:
             return
 
         text_height = height - 2
-        cursor_row, cursor_col = doc.get_cursor()
-        self._adjust_scroll(cursor_row, cursor_col, text_height, width)
-
-        self._adapter.clear()
-
         lines = doc.get_lines()
         total_lines = len(lines)
+
+        gutter_digits = max(3, len(str(total_lines)))
+        gutter_width = (gutter_digits + 1) if self._show_line_numbers else 0
+        avail_width = max(1, width - gutter_width)
+
+        cursor_row, cursor_col = doc.get_cursor()
+        self._adjust_scroll(cursor_row, cursor_col, text_height, avail_width)
+
+        self._adapter.clear()
 
         for screen_row in range(text_height):
             file_row = self._scroll_row + screen_row
             if file_row < total_lines:
                 line_content = lines[file_row].c_str()
                 if self._scroll_col < len(line_content):
-                    visible_slice = line_content[self._scroll_col : self._scroll_col + width]
+                    visible_slice = line_content[self._scroll_col : self._scroll_col + avail_width]
                 else:
                     visible_slice = ""
-                self._adapter.add_str(screen_row, 0, visible_slice)
+                gutter = f"{file_row + 1:>{gutter_digits}} " if self._show_line_numbers else ""
+                self._adapter.add_str(screen_row, 0, gutter + visible_slice)
             else:
-                self._adapter.add_str(screen_row, 0, "~")
+                gutter = (" " * gutter_width) if self._show_line_numbers else ""
+                self._adapter.add_str(screen_row, 0, gutter + "~")
 
         status_row = height - 2
         fname = doc.get_filename() or "[No Name]"
@@ -82,7 +99,7 @@ class EditorView:
             self._adapter.move_cursor(bottom_row, min(len(command_buffer), width - 1))
         else:
             screen_cur_row = cursor_row - self._scroll_row
-            screen_cur_col = cursor_col - self._scroll_col
+            screen_cur_col = gutter_width + cursor_col - self._scroll_col
             self._adapter.move_cursor(screen_cur_row, screen_cur_col)
 
         self._adapter.refresh()
