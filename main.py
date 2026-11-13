@@ -8,6 +8,7 @@ from src.adapter.curses_adapter import CursesAdapter
 from src.controller.editor_controller import EditorController
 from src.model.document import TextDocument
 from src.view.editor_view import EditorView
+from src.framework.builder import ApplicationBuilder
 
 
 class EditorApplication:
@@ -23,11 +24,21 @@ class EditorApplication:
         self.view = EditorView(self.adapter)
         self.controller = EditorController(self.doc, self.adapter, self.view)
 
+        builder = ApplicationBuilder()
+        self.app = (
+            builder
+            .set_adapter(self.adapter)
+            .set_model(self.doc)
+            .set_view(self.view)
+            .set_controller(self.controller)
+            .build()
+        )
+
     def create_editor(self) -> EditorController:
         return self.controller
 
     def run(self) -> None:
-        self.controller.run()
+        self.app.run()
 
     @classmethod
     def main(cls) -> None:

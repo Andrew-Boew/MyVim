@@ -457,6 +457,15 @@ class EditorController:
 
         return True
 
+    def render(self) -> None:
+        if self._view:
+            self._view.render(
+                self._doc,
+                self._mode.value,
+                self._status_message,
+                self._command_buffer,
+            )
+
     def run(self) -> None:
         if not self._adapter or not self._view:
             return
@@ -465,12 +474,7 @@ class EditorController:
         self._adapter.initialize()
         try:
             while self._running:
-                self._view.render(
-                    self._doc,
-                    self._mode.value,
-                    self._status_message,
-                    self._command_buffer,
-                )
+                self.render()
                 try:
                     key = self._adapter.get_key()
                 except KeyboardInterrupt:
