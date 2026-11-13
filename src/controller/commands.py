@@ -158,7 +158,7 @@ class CommandRegistry:
             return True
 
         def _help(cmd: str) -> bool:
-            controller.set_status_message(":w save | :q exit | :q! force | :o open | / search | i insert")
+            controller.set_status_message(":w save | :q exit | :o open | :set num | :sy syntax | / search | i insert")
             return True
 
         for name in ("q!", "quit!", "й!", "й! "):
@@ -205,10 +205,10 @@ class CommandRegistry:
                 controller.set_status_message("Syntax highlighting enabled" if state else "Syntax highlighting disabled")
             return True
 
-        for name in ("sy", "syntax", "sy on", "syntax on", "sy off", "syntax off", "sy!", "syntax!"):
+        for name in ("sy", "syntax", "sy on", "syntax on", "sy off", "syntax off", "sy!", "syntax!", "сы", "сы on", "сы off", "сы!"):
             self.register(name, _syntax_cmd)
 
-        for prefix in ("sy ", "syntax "):
+        for prefix in ("sy ", "syntax ", "сы "):
             self.register_prefix(prefix, _syntax_cmd)
 
         for name in ("h", "help"):

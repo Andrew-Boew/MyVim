@@ -27,9 +27,34 @@ class CursesAdapter(ITuiAdapter):
             pass
 
         try:
-            curses.start_color()
-            curses.use_default_colors()
-        except curses.error:
+            if hasattr(curses, "has_colors") and curses.has_colors():
+                curses.start_color()
+                try:
+                    curses.use_default_colors()
+                    bg = -1
+                except (AttributeError, curses.error):
+                    bg = curses.COLOR_BLACK
+
+                can_256 = getattr(curses, "COLORS", 8) >= 256
+                if can_256:
+                    curses.init_pair(1, 208, bg)
+                    curses.init_pair(2, 107, bg)
+                    curses.init_pair(3, 244, bg)
+                    curses.init_pair(4, 68, bg)
+                    curses.init_pair(5, 81, bg)
+                    curses.init_pair(6, 176, bg)
+                    curses.init_pair(7, 221, bg)
+                    curses.init_pair(8, 178, bg)
+                else:
+                    curses.init_pair(1, curses.COLOR_YELLOW, bg)
+                    curses.init_pair(2, curses.COLOR_GREEN, bg)
+                    curses.init_pair(3, curses.COLOR_WHITE, bg)
+                    curses.init_pair(4, curses.COLOR_CYAN, bg)
+                    curses.init_pair(5, curses.COLOR_BLUE, bg)
+                    curses.init_pair(6, curses.COLOR_MAGENTA, bg)
+                    curses.init_pair(7, curses.COLOR_YELLOW, bg)
+                    curses.init_pair(8, curses.COLOR_YELLOW, bg)
+        except (AttributeError, curses.error):
             pass
 
         self.set_cursor_visibility(True)

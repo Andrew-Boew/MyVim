@@ -10,7 +10,9 @@ from src.controller.commands import (
     SaveCommand,
     UndoCommand,
     RevertCommand,
+    SyntaxCommand,
 )
+from src.view.syntax_decorator import SyntaxHighlightDecorator, EditorViewDecorator
 
 
 def test_command_inheritance():
@@ -128,3 +130,46 @@ def test_view_render_with_line_numbers():
     cursor_r, cursor_c = adapter.cursor_row, adapter.cursor_col
     assert cursor_r == 0
     assert cursor_c == 0
+
+
+def test_syntax_command_and_decorator():
+    adapter = MockTuiAdapter(10, 40)
+    base_view = EditorView(adapter)
+    doc = TextDocument("def test():\n    return 42\n# comment")
+    ctrl = EditorController(doc, adapter, base_view)
+
+    assert not ctrl.get_view().is_syntax_enabled()
+
+    for ch in ":sy\n":
+        ctrl.handle_key(ord(ch) if ch != "\n" else 10)
+
+    assert ctrl.get_view().is_syntax_enabled()
+    assert isinstance(ctrl.get_view(), SyntaxHighlightDecorator)
+    assert ctrl.get_status_message() == "Syntax highlighting enabled"
+
+    ctrl.render()
+    screen_lines = adapter.get_screen_lines()
+    assert "[syntax]" in screen_lines[8]
+    assert "def test():" in screen_lines[0]
+
+    for ch in ":sy off\n":
+        ctrl.handle_key(ord(ch) if ch != "\n" else 10)
+
+    assert not ctrl.get_view().is_syntax_enabled()
+    assert ctrl.get_status_message() == "Syntax highlighting disabled"
+
+    decorator = SyntaxHighlightDecorator(base_view)
+    tokens = decorator._tokenize("def foo(x = 123):\n    return 'hello' # comment\nprint(x)")
+    kinds = [k for _, k in tokens]
+    assert "KEYWORD" in kinds
+    assert "FUNCTION" in kinds
+    assert "STRING" in kinds
+    assert "COMMENT" in kinds
+    assert "NUMBER" in kinds
+    assert "BUILTIN" in kinds
+    assert "SELF" in [k for _, k in decorator._tokenize("self._value")]
+    assert "DECORATOR" in [k for _, k in decorator._tokenize("@classmethod")]
+    tokens_rt = decorator._tokenize("return True")
+    assert tokens_rt[0] == ("return", "KEYWORD")
+    assert tokens_rt[2] == ("True", "CONSTANT")
+    assert decorator.unwrap() is base_view
