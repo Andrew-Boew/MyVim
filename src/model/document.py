@@ -1,3 +1,4 @@
+import os
 from typing import List, Optional, Tuple
 
 from src.model.command_history import CommandHistory
@@ -148,8 +149,11 @@ class TextDocument:
         return False
 
     def revert(self) -> None:
-        if self._filename:
-            self.load(self._filename)
+        if self._filename and os.path.exists(self._filename):
+            try:
+                self.load(self._filename)
+            except Exception:
+                self.set_text("")
         else:
             self._lines = [TextLine("")]
             self._cursor_row = 0

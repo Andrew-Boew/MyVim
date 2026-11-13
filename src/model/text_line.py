@@ -14,14 +14,14 @@ class TextLine:
     def __init__(self, text: str = ""):
         self._target = MyString(text)
 
+    def c_str(self) -> str:
+        return self._target.c_str()
+
     def size(self) -> int:
-        return self._target.size()
+        return len(self.c_str())
 
     def __len__(self) -> int:
         return self.size()
-
-    def c_str(self) -> str:
-        return self._target.c_str()
 
     def __str__(self) -> str:
         return self.c_str()
@@ -30,30 +30,40 @@ class TextLine:
         return f"TextLine('{self.c_str()}')"
 
     def at(self, index: int) -> str:
-        if 0 <= index < self.size():
-            val = self._target.at(index)
-            return val if isinstance(val, str) else chr(val)
+        text = self.c_str()
+        if 0 <= index < len(text):
+            return text[index]
         return ""
 
     def insert(self, index: int, s: str) -> None:
-        idx = max(0, min(index, self.size()))
-        self._target.insert(idx, s)
+        text = self.c_str()
+        char_idx = max(0, min(index, len(text)))
+        byte_idx = len(text[:char_idx].encode("utf-8"))
+        self._target.insert(byte_idx, s)
 
     def erase(self, index: int, count: int) -> None:
-        if index < 0 or index >= self.size() or count <= 0:
+        text = self.c_str()
+        if index < 0 or index >= len(text) or count <= 0:
             return
-        actual_count = min(count, self.size() - index)
-        self._target.erase(index, actual_count)
+        actual_count = min(count, len(text) - index)
+        byte_idx = len(text[:index].encode("utf-8"))
+        byte_count = len(text[index:index + actual_count].encode("utf-8"))
+        self._target.erase(byte_idx, byte_count)
 
     def clear(self) -> None:
         self._target.clear()
 
     def replace_char(self, col: int, ch: str) -> None:
-        if 0 <= col < self.size() and len(ch) == 1:
-            self._target.set_at(col, ch)
+        text = self.c_str()
+        if 0 <= col < len(text) and len(ch) == 1:
+            byte_idx = len(text[:col].encode("utf-8"))
+            old_byte_len = len(text[col].encode("utf-8"))
+            self._target.erase(byte_idx, old_byte_len)
+            self._target.insert(byte_idx, ch)
 
     def find(self, query: str, index: int = 0) -> int:
-        return self._target.find(query, index)
+        text = self.c_str()
+        return text.find(query, index)
 
     def find_word_end(self, from_col: int) -> int:
         return WordNavigator.find_word_end(self, from_col)

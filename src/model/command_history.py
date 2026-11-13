@@ -1,22 +1,31 @@
 from typing import Any, Dict, List, Optional
 
 
-class CommandHistory:
-    _instance: Optional["CommandHistory"] = None
+class SingletonMeta(type):
+    _instances: Dict[Any, Any] = {}
 
-    def __new__(cls) -> "CommandHistory":
-        if cls._instance is None:
-            cls._instance = super().__new__(cls)
-            cls._instance._undo_stack = []
-        return cls._instance
+    def __call__(cls, *args, **kwargs):
+        if cls not in cls._instances:
+            cls._instances[cls] = super().__call__(*args, **kwargs)
+        return cls._instances[cls]
+
+    def reset_instance(cls):
+        cls._instances.pop(cls, None)
+
+
+class CommandHistory(metaclass=SingletonMeta):
+    def __init__(self, capacity: int = 100) -> None:
+        if not hasattr(self, "_undo_stack"):
+            self._capacity = capacity
+            self._undo_stack: List[Dict[str, Any]] = []
 
     @classmethod
     def reset_instance(cls) -> None:
-        cls._instance = None
+        SingletonMeta._instances.pop(cls, None)
 
     def push(self, snapshot: Dict[str, Any]) -> None:
         self._undo_stack.append(snapshot)
-        if len(self._undo_stack) > 100:
+        if len(self._undo_stack) > self._capacity:
             self._undo_stack.pop(0)
 
     def pop(self) -> Optional[Dict[str, Any]]:

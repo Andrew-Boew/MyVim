@@ -1,8 +1,9 @@
 from enum import Enum
-from typing import Optional
+from typing import Optional, Callable
 
 from src.adapter.base import ITuiAdapter, KeyCode
 from src.controller.commands import (
+    CommandRegistry,
     SetLineNumbersCommand,
     SaveCommand,
     UndoCommand,
@@ -35,6 +36,17 @@ class EditorController:
         self._pending_keys = ""
         self._replace_mode = False
         self._running = False
+        self._registry = CommandRegistry()
+        self._registry.register_defaults(self, self._doc, self._view)
+
+    def register_command(self, name: str, handler: Callable[[str], bool]) -> None:
+        self._registry.register(name, handler)
+
+    def register_prefix_command(self, prefix: str, handler: Callable[[str], bool]) -> None:
+        self._registry.register_prefix(prefix, handler)
+
+    def get_command_registry(self) -> CommandRegistry:
+        return self._registry
 
     def get_document(self) -> TextDocument:
         return self._doc
@@ -383,82 +395,12 @@ class EditorController:
         if not cmd:
             return True
 
-        if cmd in ("q!", "quit!", "й!", "й! "):
-            self.stop()
-            return False
-
-        if cmd in ("q", "quit", "й"):
-            if self._doc.is_modified():
-                self._status_message = "No write since last change (add ! to override)"
-                return True
-            self.stop()
-            return False
-
-        if cmd in ("wq!", "wq", "x", "цй!", "цй", "ч"):
-            try:
-                SaveCommand(self._doc).execute()
-                self.stop()
-                return False
-            except Exception as e:
-                self._status_message = str(e)
-                return True
-
-        if cmd.startswith("w ") or cmd.startswith("ц "):
-            target = cmd[2:].strip()
-            try:
-                SaveCommand(self._doc, target).execute()
-                self._status_message = f'"{target}" written'
-            except Exception as e:
-                self._status_message = str(e)
-            return True
-
-        if cmd in ("w", "ц"):
-            try:
-                SaveCommand(self._doc).execute()
-                fname = self._doc.get_filename() or "[No Name]"
-                self._status_message = f'"{fname}" written'
-            except Exception as e:
-                self._status_message = str(e)
-            return True
-
-        if cmd.startswith("o ") or cmd.startswith("щ "):
-            target = cmd[2:].strip()
-            try:
-                self._doc.load(target)
-                self._status_message = f'"{target}" loaded'
-            except Exception as e:
-                self._status_message = str(e)
-            return True
-
-        if cmd == "e!":
-            RevertCommand(self._doc).execute()
-            self._status_message = "Changes reverted"
-            return True
-
-        if cmd in ("set num", "set nu"):
-            if self._view is not None:
-                SetLineNumbersCommand(self._view, enabled=True).execute()
-            self._status_message = "Line numbers enabled"
-            return True
-
-        if cmd in ("set nonu", "set nonumber"):
-            if self._view is not None:
-                SetLineNumbersCommand(self._view, enabled=False).execute()
-            self._status_message = "Line numbers disabled"
-            return True
-
-        if cmd in ("set invnu", "set nu!", "set num!"):
-            if self._view is not None:
-                state = SetLineNumbersCommand(self._view).execute()
-                self._status_message = "Line numbers enabled" if state else "Line numbers disabled"
-            return True
+        result = self._registry.execute(cmd)
+        if result is not None:
+            return result
 
         if cmd.isdigit():
             self._doc.move_cursor_to_line(int(cmd))
-            return True
-
-        if cmd == "h":
-            self._status_message = ":w save | :q exit | :q! force | :o open | / search | i insert"
             return True
 
         self._status_message = f"Not an editor command: {cmd}"
