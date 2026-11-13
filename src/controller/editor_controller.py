@@ -250,9 +250,10 @@ class EditorController:
             return True
 
         if key in (ord("0"), ord("^"), KeyCode.HOME):
-            self._doc.move_cursor_line_start()
-            self._pending_keys = ""
-            return True
+            if not (key == ord("0") and self._pending_keys.isdigit()):
+                self._doc.move_cursor_line_start()
+                self._pending_keys = ""
+                return True
 
         if key in (ord("$"), KeyCode.END):
             self._doc.move_cursor_line_end()

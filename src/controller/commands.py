@@ -158,7 +158,7 @@ class CommandRegistry:
         for name in ("q", "quit", "й"):
             self.register(name, _quit_normal)
 
-        for name in ("wq!", "wq", "x", "цй!", "цй", "ч"):
+        for name in ("wq!", "wq", "x", "x!", "цй!", "цй", "ч", "ч!"):
             self.register(name, _save_and_quit)
 
         for name in ("w", "ц"):
@@ -182,4 +182,5 @@ class CommandRegistry:
         for name in ("set invnu", "set nu!", "set num!"):
             self.register(name, _line_numbers_toggle)
 
-        self.register("h", _help)
+        for name in ("h", "help"):
+            self.register(name, _help)
