@@ -192,7 +192,7 @@ class EditorController:
             return True
 
         if key == ord("u"):
-            if not self._doc.undo():
+            if not UndoCommand(self._doc).execute():
                 self._status_message = "Already at oldest change"
             else:
                 self._status_message = "Change undone"
@@ -396,7 +396,7 @@ class EditorController:
 
         if cmd in ("wq!", "wq", "x", "цй!", "цй", "ч"):
             try:
-                self._doc.save()
+                SaveCommand(self._doc).execute()
                 self.stop()
                 return False
             except Exception as e:
@@ -406,7 +406,7 @@ class EditorController:
         if cmd.startswith("w ") or cmd.startswith("ц "):
             target = cmd[2:].strip()
             try:
-                self._doc.save(target)
+                SaveCommand(self._doc, target).execute()
                 self._status_message = f'"{target}" written'
             except Exception as e:
                 self._status_message = str(e)
@@ -414,7 +414,7 @@ class EditorController:
 
         if cmd in ("w", "ц"):
             try:
-                self._doc.save()
+                SaveCommand(self._doc).execute()
                 fname = self._doc.get_filename() or "[No Name]"
                 self._status_message = f'"{fname}" written'
             except Exception as e:
