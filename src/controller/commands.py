@@ -47,6 +47,15 @@ class RevertCommand(ICommand):
         return True
 
 
+class SyntaxCommand(ICommand):
+    def __init__(self, controller: Any, enabled: Optional[bool] = None):
+        self._controller = controller
+        self._enabled = enabled
+
+    def execute(self) -> bool:
+        return self._controller.toggle_syntax_highlighting(self._enabled)
+
+
 class CommandRegistry:
     def __init__(self) -> None:
         self._exact_commands: Dict[str, Any] = {}
@@ -181,6 +190,26 @@ class CommandRegistry:
 
         for name in ("set invnu", "set nu!", "set num!"):
             self.register(name, _line_numbers_toggle)
+
+        def _syntax_cmd(cmd: str) -> bool:
+            parts = cmd.split(maxsplit=1)
+            arg = parts[1].strip().lower() if len(parts) > 1 else ""
+            if arg in ("on", "1"):
+                SyntaxCommand(controller, enabled=True).execute()
+                controller.set_status_message("Syntax highlighting enabled")
+            elif arg in ("off", "0"):
+                SyntaxCommand(controller, enabled=False).execute()
+                controller.set_status_message("Syntax highlighting disabled")
+            else:
+                state = SyntaxCommand(controller).execute()
+                controller.set_status_message("Syntax highlighting enabled" if state else "Syntax highlighting disabled")
+            return True
+
+        for name in ("sy", "syntax", "sy on", "syntax on", "sy off", "syntax off", "sy!", "syntax!"):
+            self.register(name, _syntax_cmd)
+
+        for prefix in ("sy ", "syntax "):
+            self.register_prefix(prefix, _syntax_cmd)
 
         for name in ("h", "help"):
             self.register(name, _help)

@@ -1,15 +1,55 @@
+from abc import ABC, abstractmethod
 from typing import Tuple
 
 from src.adapter.base import ITuiAdapter
 from src.model.document import TextDocument
 
 
-class EditorView:
+class IEditorView(ABC):
+    @abstractmethod
+    def toggle_line_numbers(self) -> bool:
+        pass
+
+    @abstractmethod
+    def set_line_numbers(self, enabled: bool) -> None:
+        pass
+
+    @abstractmethod
+    def is_line_numbers_enabled(self) -> bool:
+        pass
+
+    @abstractmethod
+    def get_adapter(self) -> ITuiAdapter:
+        pass
+
+    @abstractmethod
+    def get_viewport_size(self) -> Tuple[int, int]:
+        pass
+
+    @abstractmethod
+    def is_syntax_enabled(self) -> bool:
+        pass
+
+    @abstractmethod
+    def render(
+        self,
+        doc: TextDocument,
+        mode_name: str,
+        status_message: str = "",
+        command_buffer: str = "",
+    ) -> None:
+        pass
+
+
+class EditorView(IEditorView):
     def __init__(self, adapter: ITuiAdapter):
         self._adapter = adapter
         self._scroll_row = 0
         self._scroll_col = 0
         self._show_line_numbers = False
+
+    def is_syntax_enabled(self) -> bool:
+        return False
 
     def toggle_line_numbers(self) -> bool:
         self._show_line_numbers = not self._show_line_numbers

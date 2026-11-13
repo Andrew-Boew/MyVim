@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Optional, Callable
+from typing import Optional, Callable, Any
 
 from src.adapter.base import ITuiAdapter, KeyCode
 from src.controller.commands import (
@@ -51,8 +51,27 @@ class EditorController:
     def get_document(self) -> TextDocument:
         return self._doc
 
-    def get_view(self) -> Optional[EditorView]:
+    def get_view(self) -> Optional[Any]:
         return self._view
+
+    def set_view(self, view: Optional[Any]) -> None:
+        self._view = view
+
+    def toggle_syntax_highlighting(self, enabled: Optional[bool] = None) -> bool:
+        if self._view is None:
+            return False
+        current_state = self._view.is_syntax_enabled()
+        target_state = not current_state if enabled is None else enabled
+        if target_state == current_state:
+            return current_state
+        if target_state:
+            from src.view.syntax_decorator import SyntaxHighlightDecorator
+            self._view = SyntaxHighlightDecorator(self._view)
+        else:
+            from src.view.syntax_decorator import EditorViewDecorator
+            if isinstance(self._view, EditorViewDecorator):
+                self._view = self._view.unwrap()
+        return target_state
 
     def get_adapter(self) -> Optional[ITuiAdapter]:
         return self._adapter
