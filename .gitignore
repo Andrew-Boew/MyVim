@@ -7,4 +7,3 @@ demo/
 .DS_Store
 __pycache__/
 *.so.dSYM/
-demo_app.py
