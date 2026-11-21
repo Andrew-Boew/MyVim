@@ -478,6 +478,9 @@ class CommandRegistry:
         self._exact_commands: Dict[str, Any] = {}
         self._prefix_commands: List[Tuple[str, Any]] = []
         self._numeric_handler: Optional[Any] = None
+        self._normal_keys: Dict[Any, ICommand] = {}
+        self._multi_keys: Dict[str, ICommand] = {}
+        self._insert_keys: Dict[Any, ICommand] = {}
 
     def register(self, name: str, handler: Any) -> None:
         self._exact_commands[name] = handler
@@ -487,6 +490,27 @@ class CommandRegistry:
 
     def register_numeric(self, handler: Any) -> None:
         self._numeric_handler = handler
+
+    def register_normal_key(self, key: Any, command: ICommand) -> None:
+        self._normal_keys[key] = command
+
+    def register_multi_key(self, sequence: str, command: ICommand) -> None:
+        self._multi_keys[sequence] = command
+
+    def register_insert_key(self, key: Any, command: ICommand) -> None:
+        self._insert_keys[key] = command
+
+    def get_normal_key(self, key: Any) -> Optional[ICommand]:
+        return self._normal_keys.get(key)
+
+    def get_multi_key(self, sequence: str) -> Optional[ICommand]:
+        return self._multi_keys.get(sequence)
+
+    def has_multi_key_prefix(self, prefix: str) -> bool:
+        return any(k.startswith(prefix) for k in self._multi_keys)
+
+    def get_insert_key(self, key: Any) -> Optional[ICommand]:
+        return self._insert_keys.get(key)
 
     def execute(self, cmd: str) -> Optional[bool]:
         cmd_stripped = cmd.strip()
@@ -511,6 +535,8 @@ class CommandRegistry:
         return None
 
     def register_defaults(self, controller: Any, doc: Any, view: Any) -> None:
+        from src.adapter.base import KeyCode
+
         quit_forced = QuitCommand(controller, doc, force=True)
         quit_normal = QuitCommand(controller, doc, force=False)
         save_and_quit = SaveAndQuitCommand(doc, controller)
@@ -573,3 +599,78 @@ class CommandRegistry:
             self.register(name, help_cmd)
 
         self.register_numeric(goto_line)
+
+        normal_bindings = {
+            KeyCode.ESC: EscCommand(controller),
+            27: EscCommand(controller),
+            ord("q"): NormalQuitCommand(controller, doc),
+            1081: NormalQuitCommand(controller, doc),
+            ord(":"): ChangeModeCommand(controller, "COMMAND", prep=lambda: controller.set_command_buffer(":")),
+            ord("/"): ChangeModeCommand(controller, "SEARCH", prep=lambda: controller.set_command_buffer("/")),
+            ord("?"): ChangeModeCommand(controller, "SEARCH", prep=lambda: controller.set_command_buffer("?")),
+            ord("i"): ChangeModeCommand(controller, "INSERT"),
+            ord("I"): ChangeModeCommand(controller, "INSERT", prep=doc.move_cursor_line_start),
+            ord("A"): ChangeModeCommand(controller, "INSERT", prep=lambda: (doc.move_cursor_line_end(), doc.move_cursor_right(allow_past_end=True))),
+            ord("o"): ChangeModeCommand(controller, "INSERT", prep=doc.open_line_below),
+            ord("O"): ChangeModeCommand(controller, "INSERT", prep=doc.open_line_above),
+            ord("S"): ChangeModeCommand(controller, "INSERT", prep=doc.clear_current_line),
+            ord("r"): EnterReplaceModeCommand(controller),
+            ord("x"): DeleteCharCommand(doc),
+            KeyCode.DELETE: DeleteCharCommand(doc),
+            ord("p"): PasteCommand(doc),
+            ord("u"): UndoCommand(doc, controller=controller),
+            ord("U"): UndoLineCommand(doc, controller=controller),
+            ord("n"): RepeatSearchCommand(doc, controller=controller, reverse=False),
+            ord("N"): RepeatSearchCommand(doc, controller=controller, reverse=True),
+            KeyCode.LEFT: CursorLeftCommand(doc),
+            ord("h"): CursorLeftCommand(doc),
+            KeyCode.RIGHT: CursorRightCommand(doc),
+            ord("l"): CursorRightCommand(doc),
+            KeyCode.UP: CursorUpCommand(doc),
+            ord("k"): CursorUpCommand(doc),
+            KeyCode.DOWN: CursorDownCommand(doc),
+            ord("j"): CursorDownCommand(doc),
+            ord("0"): CursorLineStartCommand(doc),
+            ord("^"): CursorLineStartCommand(doc),
+            KeyCode.HOME: CursorLineStartCommand(doc),
+            ord("$"): CursorLineEndCommand(doc),
+            KeyCode.END: CursorLineEndCommand(doc),
+            KeyCode.PAGE_UP: CursorPageUpCommand(doc),
+            KeyCode.PAGE_DOWN: CursorPageDownCommand(doc),
+            ord("w"): CursorWordForwardCommand(doc),
+            ord("b"): CursorWordBackwardCommand(doc),
+            ord("G"): CursorFileEndCommand(doc),
+        }
+        for k, v in normal_bindings.items():
+            self.register_normal_key(k, v)
+
+        multi_bindings = {
+            "dd": CutLineCommand(doc),
+            "dw": DeleteWordCommand(doc),
+            "diw": DeleteWordCommand(doc),
+            "yy": CopyLineCommand(doc, controller=controller),
+            "yw": CopyWordCommand(doc, controller=controller),
+            "gg": CursorFileStartCommand(doc),
+        }
+        for seq, v in multi_bindings.items():
+            self.register_multi_key(seq, v)
+
+        insert_bindings = {
+            KeyCode.ESC: ChangeModeCommand(controller, "NORMAL", prep=doc.move_cursor_left),
+            27: ChangeModeCommand(controller, "NORMAL", prep=doc.move_cursor_left),
+            KeyCode.ENTER: SplitLineCommand(doc),
+            KeyCode.RETURN: SplitLineCommand(doc),
+            10: SplitLineCommand(doc),
+            13: SplitLineCommand(doc),
+            343: SplitLineCommand(doc),
+            KeyCode.KEY_BACKSPACE: BackspaceCommand(doc),
+            KeyCode.BACKSPACE: BackspaceCommand(doc),
+            8: BackspaceCommand(doc),
+            127: BackspaceCommand(doc),
+            KeyCode.LEFT: CursorLeftCommand(doc),
+            KeyCode.RIGHT: CursorRightCommand(doc, allow_past_end=True),
+            KeyCode.UP: CursorUpCommand(doc),
+            KeyCode.DOWN: CursorDownCommand(doc),
+        }
+        for k, v in insert_bindings.items():
+            self.register_insert_key(k, v)
