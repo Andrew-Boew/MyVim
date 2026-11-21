@@ -111,7 +111,7 @@ class CommandRegistry:
                 controller.set_status_message(f'"{fname}" written')
             except Exception as e:
                 controller.set_status_message(str(e))
-                return True
+            return True
 
         def _save_with_target(cmd: str) -> bool:
             target = cmd[2:].strip()
@@ -120,7 +120,7 @@ class CommandRegistry:
                 controller.set_status_message(f'"{target}" written')
             except Exception as e:
                 controller.set_status_message(str(e))
-                return True
+            return True
 
         def _open_file(cmd: str) -> bool:
             target = cmd[2:].strip()
