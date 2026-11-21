@@ -1,6 +1,6 @@
 import sys
 from dataclasses import dataclass
-from typing import List, Optional
+from typing import List, Optional, Any
 
 from src.adapter.base import ITuiAdapter, KeyCode
 from src.adapter.curses_adapter import CursesAdapter
@@ -90,6 +90,62 @@ class SystemMonitorModel(ITuiModel):
         item = ProcessItem(new_pid, name.strip(), user, 5.0, 2.5, "RUNNING")
         self._processes.append(item)
         return item
+
+
+class SystemHeaderDashboardView(ITuiView):
+    def __init__(self, adapter: ITuiAdapter, model: SystemMonitorModel):
+        self._adapter = adapter
+        self._model = model
+
+    def _render_bar(self, percent: float, width: int) -> str:
+        avail = max(4, width - 8)
+        filled = int((min(100.0, percent) / 100.0) * avail)
+        empty = avail - filled
+        bar = "[" + ("|" * filled) + (" " * empty) + f"] {percent:4.1f}%"
+        return bar
+
+    def render(self) -> None:
+        height, width = self._adapter.get_size()
+        if height < 4 or width < 30:
+            return
+        title = "=== TUI SYSTEM MONITOR (MVC FRAMEWORK & BUILDER) ==="
+        self._adapter.add_str(0, 0, title[:width], 1)
+        total_cpu = self._model.get_total_cpu()
+        total_mem = self._model.get_total_memory()
+        cpu_bar = "CPU " + self._render_bar(total_cpu, min(36, width // 2))
+        mem_bar = "MEM " + self._render_bar(total_mem, min(36, width // 2))
+        paused_flag = " [PAUSED]" if self._model.is_paused() else ""
+        header_stats = f"{cpu_bar}  |  {mem_bar}{paused_flag}"
+        self._adapter.add_str(1, 0, header_stats[:width], 0)
+        procs = self._model.get_processes()
+        running_cnt = sum(1 for p in procs if p.state == "RUNNING")
+        info_line = f"Tasks: {len(procs)} total, {running_cnt} running | Sort: {self._model.get_sort_key().upper()}"
+        self._adapter.add_str(2, 0, info_line[:width], 0)
+        col_header = "  PID     USER         CPU%    MEM%    STATE      COMMAND"
+        self._adapter.add_str(3, 0, col_header[:width], 1)
+
+
+class ProcessTableView(ITuiView):
+    def __init__(self, adapter: ITuiAdapter, model: SystemMonitorModel, monitor_view: Optional[Any] = None):
+        self._adapter = adapter
+        self._model = model
+        self._monitor_view = monitor_view
+
+    def render(self) -> None:
+        if self._monitor_view is not None:
+            self._monitor_view.render()
+        else:
+            height, width = self._adapter.get_size()
+            if height < 8 or width < 30:
+                return
+            procs = self._model.get_processes()
+            table_rows = height - 6
+            for i in range(min(len(procs), table_rows)):
+                p = procs[i]
+                row_str = f"   {p.pid:<6} {p.user:<12} {p.cpu_percent:>5.1f}%  {p.memory_percent:>5.1f}%  {p.state:<10} {p.name}"
+                self._adapter.add_str(i + 4, 0, row_str[:width], 0)
+            hint = "[s] Sort | [k/d] Kill | [n] Spawn | [Space] Pause | [j/k] Select | [q] Quit"
+            self._adapter.add_str(height - 1, 0, hint[:width])
 
 
 class SystemMonitorView(ITuiView):
@@ -249,6 +305,8 @@ def create_monitor_app(adapter: Optional[ITuiAdapter] = None) -> TuiApplication:
     real_adapter = adapter if adapter is not None else CursesAdapter()
     model = SystemMonitorModel()
     view = SystemMonitorView(real_adapter, model)
+    header_view = SystemHeaderDashboardView(real_adapter, model)
+    table_view = ProcessTableView(real_adapter, model, view)
     controller = SystemMonitorController(model, view, real_adapter)
 
     builder = ApplicationBuilder()
@@ -256,7 +314,8 @@ def create_monitor_app(adapter: Optional[ITuiAdapter] = None) -> TuiApplication:
         builder
         .set_adapter(real_adapter)
         .set_model(model)
-        .set_view(view)
+        .add_view(header_view)
+        .add_view(table_view)
         .set_controller(controller)
         .build()
     )
