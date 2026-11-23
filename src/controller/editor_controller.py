@@ -2,13 +2,7 @@ from enum import Enum
 from typing import Optional, Callable, Any
 
 from src.adapter.base import ITuiAdapter, KeyCode
-from src.controller.commands import (
-    CommandRegistry,
-    SetLineNumbersCommand,
-    SaveCommand,
-    UndoCommand,
-    RevertCommand,
-)
+from src.controller.commands import ICommand, CommandRegistry
 from src.model.document import TextDocument
 from src.view.editor_view import EditorView
 
@@ -39,10 +33,19 @@ class EditorController:
         self._registry = CommandRegistry()
         self._registry.register_defaults(self, self._doc, self._view)
 
-    def register_command(self, name: str, handler: Callable[[str], bool]) -> None:
+    def register_normal_key(self, key: Any, command: ICommand) -> None:
+        self._registry.register_normal_key(key, command)
+
+    def register_multi_key(self, sequence: str, command: ICommand) -> None:
+        self._registry.register_multi_key(sequence, command)
+
+    def register_insert_key(self, key: Any, command: ICommand) -> None:
+        self._registry.register_insert_key(key, command)
+
+    def register_command(self, name: str, handler: Any) -> None:
         self._registry.register(name, handler)
 
-    def register_prefix_command(self, prefix: str, handler: Callable[[str], bool]) -> None:
+    def register_prefix_command(self, prefix: str, handler: Any) -> None:
         self._registry.register_prefix(prefix, handler)
 
     def get_command_registry(self) -> CommandRegistry:
@@ -79,8 +82,14 @@ class EditorController:
     def get_mode(self) -> EditorMode:
         return self._mode
 
-    def set_mode(self, mode: EditorMode) -> None:
-        self._mode = mode
+    def set_mode(self, mode: Any) -> None:
+        if isinstance(mode, str) and not isinstance(mode, EditorMode):
+            try:
+                self._mode = EditorMode(mode)
+            except ValueError:
+                self._mode = mode
+        else:
+            self._mode = mode
         self._command_buffer = ""
         self._pending_keys = ""
         self._replace_mode = False
@@ -90,6 +99,24 @@ class EditorController:
 
     def set_status_message(self, message: str) -> None:
         self._status_message = message
+
+    def get_pending_keys(self) -> str:
+        return self._pending_keys
+
+    def set_pending_keys(self, val: str) -> None:
+        self._pending_keys = val
+
+    def is_replace_mode(self) -> bool:
+        return self._replace_mode
+
+    def set_replace_mode(self, val: bool) -> None:
+        self._replace_mode = val
+
+    def get_command_buffer(self) -> str:
+        return self._command_buffer
+
+    def set_command_buffer(self, buf: str) -> None:
+        self._command_buffer = buf
 
     def is_running(self) -> bool:
         return self._running
@@ -123,266 +150,46 @@ class EditorController:
                 self._doc.replace_char(chr(key))
             return True
 
-        if key in (KeyCode.ESC, 27):
-            if self._pending_keys == "ESC":
-                self.stop()
-                return False
-            self._pending_keys = "ESC"
-            self._status_message = "Press ESC again to exit, or type :q"
-            return True
-
-        if self._pending_keys == "ESC":
+        if self._pending_keys == "ESC" and key not in (KeyCode.ESC, 27):
             self._pending_keys = ""
             self._status_message = ""
-
-        if key in (ord("q"), 1081) and not self._pending_keys:
-            if not self._doc.is_modified():
-                self.stop()
-                return False
-            self._status_message = "No write since last change (use :q! to override)"
-            return True
-
-        if key == ord(":"):
-            self._mode = EditorMode.COMMAND
-            self._command_buffer = ":"
-            self._status_message = ""
-            self._pending_keys = ""
-            return True
-
-        if key == ord("/"):
-            self._mode = EditorMode.SEARCH
-            self._command_buffer = "/"
-            self._status_message = ""
-            self._pending_keys = ""
-            return True
-
-        if key == ord("?"):
-            self._mode = EditorMode.SEARCH
-            self._command_buffer = "?"
-            self._status_message = ""
-            self._pending_keys = ""
-            return True
-
-        if key == ord("i"):
-            if self._pending_keys == "d":
-                self._pending_keys = "di"
-                return True
-            self._mode = EditorMode.INSERT
-            self._status_message = ""
-            self._pending_keys = ""
-            return True
-
-        if key == ord("I"):
-            self._doc.move_cursor_line_start()
-            self._mode = EditorMode.INSERT
-            self._status_message = ""
-            self._pending_keys = ""
-            return True
-
-        if key == ord("A"):
-            self._doc.move_cursor_line_end()
-            self._doc.move_cursor_right(allow_past_end=True)
-            self._mode = EditorMode.INSERT
-            self._status_message = ""
-            self._pending_keys = ""
-            return True
-
-        if key == ord("o"):
-            self._doc.open_line_below()
-            self._mode = EditorMode.INSERT
-            self._status_message = ""
-            self._pending_keys = ""
-            return True
-
-        if key == ord("O"):
-            self._doc.open_line_above()
-            self._mode = EditorMode.INSERT
-            self._status_message = ""
-            self._pending_keys = ""
-            return True
-
-        if key == ord("S"):
-            self._doc.clear_current_line()
-            self._mode = EditorMode.INSERT
-            self._status_message = ""
-            self._pending_keys = ""
-            return True
-
-        if key == ord("r"):
-            self._replace_mode = True
-            return True
-
-        if key == ord("x") or key == KeyCode.DELETE:
-            self._doc.delete_char()
-            self._pending_keys = ""
-            return True
-
-        if key == ord("p"):
-            self._doc.paste()
-            self._pending_keys = ""
-            return True
-
-        if key == ord("u"):
-            if not UndoCommand(self._doc).execute():
-                self._status_message = "Already at oldest change"
-            else:
-                self._status_message = "Change undone"
-            self._pending_keys = ""
-            return True
-
-        if key == ord("U"):
-            if not self._doc.undo_line():
-                self._status_message = "Line not modified"
-            else:
-                self._status_message = "Line restored"
-            self._pending_keys = ""
-            return True
-
-        if key == ord("n"):
-            if not self._doc.repeat_search(reverse=False):
-                self._status_message = "Pattern not found"
-            return True
-
-        if key == ord("N"):
-            if not self._doc.repeat_search(reverse=True):
-                self._status_message = "Pattern not found"
-            return True
-
-        if key in (KeyCode.LEFT, ord("h")):
-            self._doc.move_cursor_left()
-            self._pending_keys = ""
-            return True
-
-        if key in (KeyCode.RIGHT, ord("l")):
-            self._doc.move_cursor_right()
-            self._pending_keys = ""
-            return True
-
-        if key in (KeyCode.UP, ord("k")):
-            self._doc.move_cursor_up()
-            self._pending_keys = ""
-            return True
-
-        if key in (KeyCode.DOWN, ord("j")):
-            self._doc.move_cursor_down()
-            self._pending_keys = ""
-            return True
-
-        if key in (ord("0"), ord("^"), KeyCode.HOME):
-            if not (key == ord("0") and self._pending_keys.isdigit()):
-                self._doc.move_cursor_line_start()
-                self._pending_keys = ""
-                return True
-
-        if key in (ord("$"), KeyCode.END):
-            self._doc.move_cursor_line_end()
-            self._pending_keys = ""
-            return True
-
-        if key == KeyCode.PAGE_UP:
-            self._doc.page_up()
-            self._pending_keys = ""
-            return True
-
-        if key == KeyCode.PAGE_DOWN:
-            self._doc.page_down()
-            self._pending_keys = ""
-            return True
-
-        if key == ord("w"):
-            if self._pending_keys == "y":
-                self._doc.copy_word()
-                self._pending_keys = ""
-                self._status_message = "Word yanked"
-            elif self._pending_keys == "di":
-                self._doc.delete_word()
-                self._pending_keys = ""
-            else:
-                self._doc.move_cursor_word_forward()
-                self._pending_keys = ""
-            return True
-
-        if key == ord("b"):
-            self._doc.move_cursor_word_backward()
-            self._pending_keys = ""
-            return True
-
-        if key == ord("d"):
-            if self._pending_keys == "d":
-                self._doc.cut_line()
-                self._pending_keys = ""
-            else:
-                self._pending_keys = "d"
-            return True
-
-        if key == ord("y"):
-            if self._pending_keys == "y":
-                self._doc.copy_line()
-                self._pending_keys = ""
-                self._status_message = "Line yanked"
-            else:
-                self._pending_keys = "y"
-            return True
-
-
-        if key == ord("g"):
-            if self._pending_keys == "g":
-                self._doc.move_cursor_file_start()
-                self._pending_keys = ""
-            else:
-                self._pending_keys = "g"
-            return True
 
         if ord("1") <= key <= ord("9") or (self._pending_keys.isdigit() and ord("0") <= key <= ord("9")):
             self._pending_keys += chr(key)
             return True
 
-        if key == ord("G"):
-            if self._pending_keys.isdigit():
-                self._doc.move_cursor_to_line(int(self._pending_keys))
-            else:
-                self._doc.move_cursor_file_end()
+        if key == ord("G") and self._pending_keys.isdigit():
+            line_num = int(self._pending_keys)
             self._pending_keys = ""
+            self._doc.move_cursor_to_line(line_num)
             return True
 
+        char_key = chr(key) if 0 <= key < 65536 else ""
+        candidate_seq = self._pending_keys + char_key if char_key else ""
+
+        if candidate_seq:
+            cmd = self._registry.get_multi_key(candidate_seq)
+            if cmd is not None:
+                self._pending_keys = ""
+                return cmd.execute()
+            if self._registry.has_multi_key_prefix(candidate_seq):
+                self._pending_keys = candidate_seq
+                return True
+
         self._pending_keys = ""
+
+        cmd = self._registry.get_normal_key(key)
+        if cmd is not None:
+            return cmd.execute()
+
         return True
 
     def _handle_insert_mode_key(self, key: int) -> bool:
-        if key in (KeyCode.ESC, 27):
-            self._mode = EditorMode.NORMAL
-            self._doc.move_cursor_left()
-            self._status_message = ""
-            return True
-
-        if key in (KeyCode.ENTER, KeyCode.RETURN, 10, 13, 343):
-            self._doc.split_line()
-            return True
-
-        if key in (KeyCode.KEY_BACKSPACE, KeyCode.BACKSPACE, 8, 127):
-            self._doc.backspace()
-            return True
-
-        if key == KeyCode.LEFT:
-            self._doc.move_cursor_left()
-            return True
-
-        if key == KeyCode.RIGHT:
-            self._doc.move_cursor_right(allow_past_end=True)
-            return True
-
-        if key == KeyCode.UP:
-            self._doc.move_cursor_up()
-            return True
-
-        if key == KeyCode.DOWN:
-            self._doc.move_cursor_down()
-            return True
-
+        cmd = self._registry.get_insert_key(key)
+        if cmd is not None:
+            return cmd.execute()
         if 32 <= key <= 126 or (key > 127 and key < 65536):
             self._doc.insert_text(chr(key))
-            return True
-
         return True
 
     def _handle_command_mode_key(self, key: int) -> bool:
@@ -419,10 +226,6 @@ class EditorController:
         if result is not None:
             return result
 
-        if cmd.isdigit():
-            self._doc.move_cursor_to_line(int(cmd))
-            return True
-
         self._status_message = f"Not an editor command: {cmd}"
         return True
 
@@ -442,12 +245,11 @@ class EditorController:
             return True
 
         if key in (KeyCode.ENTER, KeyCode.RETURN, 10, 13, 343):
-            prefix = self._command_buffer[0]
+            forward = self._command_buffer.startswith("/")
             query = self._command_buffer[1:]
             self._mode = EditorMode.NORMAL
             self._command_buffer = ""
             if query:
-                forward = prefix == "/"
                 if not self._doc.search(query, forward=forward):
                     self._status_message = f"Pattern not found: {query}"
             return True
@@ -459,9 +261,10 @@ class EditorController:
 
     def render(self) -> None:
         if self._view:
+            mode_str = self._mode.value if hasattr(self._mode, "value") else str(self._mode)
             self._view.render(
                 self._doc,
-                self._mode.value,
+                mode_str,
                 self._status_message,
                 self._command_buffer,
             )

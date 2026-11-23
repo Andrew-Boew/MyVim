@@ -4,7 +4,8 @@
 !README.md
 docs/
 demo/
+uml/
+scripts/
 .DS_Store
 __pycache__/
 *.so.dSYM/
-demo_app.py

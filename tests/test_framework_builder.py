@@ -394,3 +394,53 @@ def test_create_monitor_app_builder_execution():
     assert isinstance(app, TuiApplication)
     app.run()
     assert adapter.is_initialized is False
+
+
+def test_builder_multiple_views():
+    adapter = MockTuiAdapter(24, 80)
+    model = SystemMonitorModel()
+    v1 = SystemMonitorView(adapter, model)
+    v2 = SystemMonitorView(adapter, model)
+    controller = SystemMonitorController(model, v1, adapter)
+
+    builder = ApplicationBuilder()
+    app = (
+        builder
+        .set_adapter(adapter)
+        .set_model(model)
+        .add_view(v1)
+        .add_view(v2)
+        .set_controller(controller)
+        .build()
+    )
+    assert len(app.get_views()) == 2
+    assert app.get_views()[0] is v1
+    assert app.get_views()[1] is v2
+    assert app.get_view() is v1
+
+    builder.reset()
+    app2 = (
+        builder
+        .set_adapter(adapter)
+        .set_model(model)
+        .set_views([v1, v2])
+        .set_controller(controller)
+        .build()
+    )
+    assert len(app2.get_views()) == 2
+    assert app2.get_views()[0] is v1
+
+
+def test_director_construct_with_multiple_views():
+    adapter = MockTuiAdapter(24, 80)
+    model = SystemMonitorModel()
+    v1 = SystemMonitorView(adapter, model)
+    v2 = SystemMonitorView(adapter, model)
+    controller = SystemMonitorController(model, v1, adapter)
+
+    director = ApplicationDirector()
+    app = director.construct(adapter, model, v1, controller, extra_views=[v2])
+    assert len(app.get_views()) == 2
+    assert app.get_views()[0] is v1
+    assert app.get_views()[1] is v2
+
