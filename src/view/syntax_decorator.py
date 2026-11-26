@@ -262,28 +262,33 @@ class SyntaxHighlightDecorator(EditorViewDecorator):
                 gutter = (" " * gutter_width) if is_num else ""
                 adapter.add_str(screen_row, 0, gutter + "~", 0)
 
-        status_row = height - 2
-        fname = doc.get_filename() or "[No Name]"
-        mod_flag = " [+]" if doc.is_modified() else ""
-        left_status = f"-- {mode_name} --  {fname}{mod_flag} [syntax]"
-        right_status = f"{cursor_row + 1}/{total_lines}"
+        if getattr(target, "_include_status", True):
+            status_row = height - 2
+            fname = doc.get_filename() or "[No Name]"
+            mod_flag = " [+]" if doc.is_modified() else ""
+            left_status = f"-- {mode_name} --  {fname}{mod_flag} [syntax]"
+            right_status = f"{cursor_row + 1}/{total_lines}"
 
-        space_count = max(1, width - len(left_status) - len(right_status) - 1)
-        status_line = left_status + (" " * space_count) + right_status
-        adapter.add_str(status_row, 0, status_line[:width])
+            space_count = max(1, width - len(left_status) - len(right_status) - 1)
+            status_line = left_status + (" " * space_count) + right_status
+            adapter.add_str(status_row, 0, status_line[:width])
 
-        bottom_row = height - 1
-        if mode_name in ("COMMAND", "SEARCH"):
-            adapter.add_str(bottom_row, 0, command_buffer[:width])
-        else:
-            if status_message:
-                adapter.add_str(bottom_row, 0, status_message[:width])
+            bottom_row = height - 1
+            if mode_name in ("COMMAND", "SEARCH"):
+                adapter.add_str(bottom_row, 0, command_buffer[:width])
+            else:
+                if status_message:
+                    adapter.add_str(bottom_row, 0, status_message[:width])
 
-        if mode_name in ("COMMAND", "SEARCH"):
-            adapter.move_cursor(bottom_row, min(len(command_buffer), width - 1))
-        else:
+            if mode_name in ("COMMAND", "SEARCH"):
+                adapter.move_cursor(bottom_row, min(len(command_buffer), width - 1))
+            else:
+                screen_cur_row = cursor_row - scroll_row
+                screen_cur_col = gutter_width + cursor_col - scroll_col
+                adapter.move_cursor(screen_cur_row, screen_cur_col)
+
+            adapter.refresh()
+        elif mode_name not in ("COMMAND", "SEARCH"):
             screen_cur_row = cursor_row - scroll_row
             screen_cur_col = gutter_width + cursor_col - scroll_col
             adapter.move_cursor(screen_cur_row, screen_cur_col)
-
-        adapter.refresh()
