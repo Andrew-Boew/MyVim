@@ -306,7 +306,7 @@ def create_monitor_app(adapter: Optional[ITuiAdapter] = None) -> TuiApplication:
     model = SystemMonitorModel()
     view = SystemMonitorView(real_adapter, model)
     header_view = SystemHeaderDashboardView(real_adapter, model)
-    table_view = ProcessTableView(real_adapter, model, view)
+    table_view = ProcessTableView(real_adapter, model)
     controller = SystemMonitorController(model, view, real_adapter)
 
     builder = ApplicationBuilder()
@@ -316,6 +316,7 @@ def create_monitor_app(adapter: Optional[ITuiAdapter] = None) -> TuiApplication:
         .set_model(model)
         .add_view(header_view)
         .add_view(table_view)
+        .add_view(view)
         .set_controller(controller)
         .build()
     )
