@@ -1,10 +1,10 @@
 from enum import Enum
-from typing import Optional, Callable, Any
+from typing import Optional, Callable, Any, List
 
 from src.adapter.base import ITuiAdapter, KeyCode
 from src.controller.commands import ICommand, CommandRegistry
 from src.model.document import TextDocument
-from src.view.editor_view import EditorView
+from src.view.editor_view import EditorView, EditorStatusView
 
 
 class EditorMode(str, Enum):
@@ -20,10 +20,19 @@ class EditorController:
         doc: Optional[TextDocument] = None,
         adapter: Optional[ITuiAdapter] = None,
         view: Optional[EditorView] = None,
+        views: Optional[List[Any]] = None,
     ):
         self._doc = doc if doc is not None else TextDocument()
         self._adapter = adapter
-        self._view = view if view is not None else (EditorView(adapter) if adapter else None)
+        if views is not None:
+            self._views: List[Any] = list(views)
+        elif view is not None:
+            self._views = [view]
+        elif adapter is not None:
+            self._views = [EditorView(adapter)]
+        else:
+            self._views = []
+        self._view = self._views[0] if self._views else None
         self._mode = EditorMode.NORMAL
         self._status_message = ""
         self._command_buffer = ""
@@ -57,8 +66,23 @@ class EditorController:
     def get_view(self) -> Optional[Any]:
         return self._view
 
+    def get_views(self) -> List[Any]:
+        return self._views
+
+    def add_view(self, view: Any) -> None:
+        if view is not None:
+            self._views.append(view)
+            if self._view is None:
+                self._view = view
+
     def set_view(self, view: Optional[Any]) -> None:
         self._view = view
+        if view is None:
+            self._views = []
+        elif self._views:
+            self._views[0] = view
+        else:
+            self._views = [view]
 
     def toggle_syntax_highlighting(self, enabled: Optional[bool] = None) -> bool:
         if self._view is None:
@@ -74,6 +98,8 @@ class EditorController:
             from src.view.syntax_decorator import EditorViewDecorator
             if isinstance(self._view, EditorViewDecorator):
                 self._view = self._view.unwrap()
+        if self._views:
+            self._views[0] = self._view
         return target_state
 
     def get_adapter(self) -> Optional[ITuiAdapter]:
@@ -260,14 +286,26 @@ class EditorController:
         return True
 
     def render(self) -> None:
-        if self._view:
-            mode_str = self._mode.value if hasattr(self._mode, "value") else str(self._mode)
-            self._view.render(
-                self._doc,
-                mode_str,
-                self._status_message,
-                self._command_buffer,
-            )
+        if not self._views:
+            return
+        mode_str = self._mode.value if hasattr(self._mode, "value") else str(self._mode)
+        syntax_on = self._view.is_syntax_enabled() if (self._view and hasattr(self._view, "is_syntax_enabled")) else False
+        for v in self._views:
+            if isinstance(v, EditorStatusView):
+                v.render(
+                    self._doc,
+                    mode_str,
+                    self._status_message,
+                    self._command_buffer,
+                    syntax_enabled=syntax_on,
+                )
+            else:
+                v.render(
+                    self._doc,
+                    mode_str,
+                    self._status_message,
+                    self._command_buffer,
+                )
 
     def run(self) -> None:
         if not self._adapter or not self._view:

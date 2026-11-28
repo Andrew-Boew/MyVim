@@ -444,3 +444,36 @@ def test_director_construct_with_multiple_views():
     assert app.get_views()[0] is v1
     assert app.get_views()[1] is v2
 
+
+def test_editor_multiple_views_with_status_view():
+    from src.model.document import TextDocument
+    from src.view.editor_view import EditorView, EditorStatusView
+    from src.controller.editor_controller import EditorController
+
+    adapter = MockTuiAdapter(10, 60)
+    doc = TextDocument("def foo():\n    return 42")
+    text_view = EditorView(adapter, include_status=False)
+    status_view = EditorStatusView(adapter)
+    ctrl = EditorController(doc, adapter, views=[text_view, status_view])
+
+    app = (
+        ApplicationBuilder()
+        .set_adapter(adapter)
+        .set_model(doc)
+        .add_view(text_view)
+        .add_view(status_view)
+        .set_controller(ctrl)
+        .build()
+    )
+
+    assert len(app.get_views()) == 2
+    assert len(ctrl.get_views()) == 2
+
+    ctrl.render()
+    assert "def foo():" in adapter.get_line_text(0)
+    assert "-- NORMAL --" in adapter.get_line_text(8)
+
+    ctrl.toggle_syntax_highlighting(True)
+    ctrl.render()
+    assert "[syntax]" in adapter.get_line_text(8)
+

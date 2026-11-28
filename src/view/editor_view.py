@@ -42,11 +42,12 @@ class IEditorView(ABC):
 
 
 class EditorView(IEditorView):
-    def __init__(self, adapter: ITuiAdapter):
+    def __init__(self, adapter: ITuiAdapter, include_status: bool = True):
         self._adapter = adapter
         self._scroll_row = 0
         self._scroll_col = 0
         self._show_line_numbers = False
+        self._include_status = include_status
 
     def is_syntax_enabled(self) -> bool:
         return False
@@ -118,10 +119,65 @@ class EditorView(IEditorView):
                 gutter = (" " * gutter_width) if self._show_line_numbers else ""
                 self._adapter.add_str(screen_row, 0, gutter + "~")
 
+        if self._include_status:
+            status_row = height - 2
+            fname = doc.get_filename() or "[No Name]"
+            mod_flag = " [+]" if doc.is_modified() else ""
+            left_status = f"-- {mode_name} --  {fname}{mod_flag}"
+            right_status = f"{cursor_row + 1}/{total_lines}"
+
+            space_count = max(1, width - len(left_status) - len(right_status) - 1)
+            status_line = left_status + (" " * space_count) + right_status
+            self._adapter.add_str(status_row, 0, status_line[:width])
+
+            bottom_row = height - 1
+            if mode_name in ("COMMAND", "SEARCH"):
+                self._adapter.add_str(bottom_row, 0, command_buffer[:width])
+            else:
+                if status_message:
+                    self._adapter.add_str(bottom_row, 0, status_message[:width])
+
+            if mode_name in ("COMMAND", "SEARCH"):
+                self._adapter.move_cursor(bottom_row, min(len(command_buffer), width - 1))
+            else:
+                screen_cur_row = cursor_row - self._scroll_row
+                screen_cur_col = gutter_width + cursor_col - self._scroll_col
+                self._adapter.move_cursor(screen_cur_row, screen_cur_col)
+
+            self._adapter.refresh()
+        elif mode_name not in ("COMMAND", "SEARCH"):
+            screen_cur_row = cursor_row - self._scroll_row
+            screen_cur_col = gutter_width + cursor_col - self._scroll_col
+            self._adapter.move_cursor(screen_cur_row, screen_cur_col)
+
+
+class EditorStatusView:
+    def __init__(self, adapter: ITuiAdapter):
+        self._adapter = adapter
+
+    def get_adapter(self) -> ITuiAdapter:
+        return self._adapter
+
+    def render(
+        self,
+        doc: TextDocument,
+        mode_name: str,
+        status_message: str = "",
+        command_buffer: str = "",
+        syntax_enabled: bool = False,
+    ) -> None:
+        height, width = self._adapter.get_size()
+        if height < 3 or width < 10:
+            return
+
+        total_lines = doc.get_line_count()
+        cursor_row, _ = doc.get_cursor()
+
         status_row = height - 2
         fname = doc.get_filename() or "[No Name]"
         mod_flag = " [+]" if doc.is_modified() else ""
-        left_status = f"-- {mode_name} --  {fname}{mod_flag}"
+        syntax_flag = " [syntax]" if syntax_enabled else ""
+        left_status = f"-- {mode_name} --  {fname}{mod_flag}{syntax_flag}"
         right_status = f"{cursor_row + 1}/{total_lines}"
 
         space_count = max(1, width - len(left_status) - len(right_status) - 1)
@@ -131,15 +187,9 @@ class EditorView(IEditorView):
         bottom_row = height - 1
         if mode_name in ("COMMAND", "SEARCH"):
             self._adapter.add_str(bottom_row, 0, command_buffer[:width])
+            self._adapter.move_cursor(bottom_row, min(len(command_buffer), width - 1))
         else:
             if status_message:
                 self._adapter.add_str(bottom_row, 0, status_message[:width])
-
-        if mode_name in ("COMMAND", "SEARCH"):
-            self._adapter.move_cursor(bottom_row, min(len(command_buffer), width - 1))
-        else:
-            screen_cur_row = cursor_row - self._scroll_row
-            screen_cur_col = gutter_width + cursor_col - self._scroll_col
-            self._adapter.move_cursor(screen_cur_row, screen_cur_col)
 
         self._adapter.refresh()
