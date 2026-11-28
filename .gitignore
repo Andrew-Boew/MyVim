@@ -4,7 +4,9 @@
 !README.md
 docs/
 demo/
-uml/
+uml/*
+!uml/terminal_demo.png
+!uml/diagramma-klassov-full.png
 scripts/
 .DS_Store
 __pycache__/
